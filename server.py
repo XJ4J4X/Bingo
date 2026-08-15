@@ -1,3 +1,4 @@
+# Aminato si tu lis cette phrase j'ai galerer mdr -- J4X
 import http.server
 import socketserver
 import json
@@ -25,7 +26,10 @@ DEFAULT_PHRASES = [
 game_state = {
     "is_active": False,
     "start_time": None,
-    "duration": 600
+    "duration": 600,
+    "verification_mode": "trust",
+    "active_phrases": [],
+    "admin_ticked": []
 }
 
 def init_db():
@@ -50,6 +54,14 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             password TEXT UNIQUE,
             role TEXT DEFAULT 'admin'
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS profiles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE,
+            phrases_text TEXT
         )
     ''')
     
@@ -102,12 +114,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute('SELECT id, phrase FROM phrases')
-            phrases = [{'id': row[0], 'phrase': row[1]} for row in c.fetchall()]
-            conn.close()
-            self.wfile.write(json.dumps(phrases).encode('utf-8'))
+            
+            if game_state["is_active"] and game_state["active_phrases"]:
+                phrases_to_send = [{'id': i, 'phrase': p} for i, p in enumerate(game_state["active_phrases"])]
+            else:
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('SELECT id, phrase FROM phrases')
+                phrases_to_send = [{'id': row[0], 'phrase': row[1]} for row in c.fetchall()]
+                conn.close()
+                
+            self.wfile.write(json.dumps(phrases_to_send).encode('utf-8'))
 
         elif self.path == '/api/game/state':
             self.send_response(200)
@@ -142,6 +159,26 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn.close()
             self.wfile.write(json.dumps(users).encode('utf-8'))
 
+        elif self.path == '/api/admin/profiles':
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute('SELECT id, name, phrases_text FROM profiles')
+            profiles = [{'id': row[0], 'name': row[1], 'phrases': row[2]} for row in c.fetchall()]
+            conn.close()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(profiles).encode('utf-8'))
+            
+        elif self.path == '/api/admin/game/live_data':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'active_phrases': game_state["active_phrases"],
+                'admin_ticked': game_state["admin_ticked"]
+            }).encode('utf-8'))
+            
         else:
             super().do_GET()
 
@@ -204,9 +241,9 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/api/score':
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
-            score_to_add = data.get('score', 0)
+            checked_phrases = data.get('checked_phrases', [])
             
-            if not isinstance(score_to_add, int) or score_to_add < 0:
+            if not isinstance(checked_phrases, list) or len(checked_phrases) > 5:
                 self.send_error(400, "Bad Request")
                 return
 
@@ -216,6 +253,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             user = c.fetchone()
             
             if user:
+                score_to_add = 0
+                if game_state["verification_mode"] == "strict":
+                    for phrase in checked_phrases:
+                        if phrase in game_state["admin_ticked"]:
+                            score_to_add += 10
+                else:
+                    score_to_add = len(checked_phrases) * 10
+                    
                 new_score = user[1] + score_to_add
                 c.execute('UPDATE users SET score = ? WHERE id = ?', (new_score, user[0]))
                 conn.commit()
@@ -261,6 +306,29 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["is_active"] = True
                 game_state["start_time"] = time.time()
                 game_state["duration"] = data.get("duration", 600)
+                game_state["verification_mode"] = data.get("verification_mode", "trust")
+                game_state["admin_ticked"] = []
+                
+                profile_id = data.get("profile_id")
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                if profile_id and str(profile_id) != "random":
+                    c.execute('SELECT phrases_text FROM profiles WHERE id = ?', (profile_id,))
+                    row = c.fetchone()
+                    if row:
+                        phrases = [p.strip() for p in row[0].split('\n') if p.strip()]
+                        game_state["active_phrases"] = phrases[:16]
+                    else:
+                        game_state["active_phrases"] = []
+                else:
+                    c.execute('SELECT phrase FROM phrases')
+                    all_phrases = [row[0] for row in c.fetchall()]
+                    if len(all_phrases) >= 16:
+                        game_state["active_phrases"] = random.sample(all_phrases, 16)
+                    else:
+                        game_state["active_phrases"] = all_phrases
+                conn.close()
+                
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -408,13 +476,59 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
+            elif self.path == '/api/admin/profiles/add':
+                name = data.get('name', '').strip()
+                phrases_text = data.get('phrases_text', '').strip()
+                if name and phrases_text:
+                    conn = sqlite3.connect(DB_FILE)
+                    c = conn.cursor()
+                    try:
+                        c.execute('INSERT INTO profiles (name, phrases_text) VALUES (?, ?)', (name, phrases_text))
+                        conn.commit()
+                        self.send_response(200)
+                    except sqlite3.IntegrityError:
+                        self.send_response(400)
+                    finally:
+                        conn.close()
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                
+            elif self.path == '/api/admin/profiles/delete':
+                profile_id = data.get('id')
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('DELETE FROM profiles WHERE id = ?', (profile_id,))
+                conn.commit()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+
+            elif self.path == '/api/admin/game/tick':
+                phrase = data.get('phrase', '')
+                is_checked = data.get('checked', False)
+                if is_checked:
+                    if phrase not in game_state["admin_ticked"]:
+                        game_state["admin_ticked"].append(phrase)
+                else:
+                    if phrase in game_state["admin_ticked"]:
+                        game_state["admin_ticked"].remove(phrase)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                
             else:
                 self.send_error(404, "Not Found")
         else:
             self.send_error(404, "Not Found")
 
+class ThreadingSimpleServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+
 if __name__ == '__main__':
     init_db()
-    with socketserver.TCPServer(("", PORT), MyRequestHandler) as httpd:
+    with ThreadingSimpleServer(("", PORT), MyRequestHandler) as httpd:
         print(f"Serving at port {PORT}")
         httpd.serve_forever()

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Aminato Bingo</title>
+    <title>Panel Admin - Aminato Bingo</title>
+    <link rel="icon" type="image/jpeg" href="favicon.jpg">
     <link rel="stylesheet" href="style.css">
     
     <style>
@@ -45,6 +46,7 @@
         <div id="admin-info" class="hidden">
             Connecté. <button id="logout-btn">Déconnexion</button>
         </div>
+        <button id="theme-toggle" title="Basculer le thème">🌙</button>
     </header>
 
     <main>
@@ -65,9 +67,21 @@
                 <h3>Gestion du Live (Timer Global)</h3>
                 <p>État actuel : <strong id="game-status">Hors Ligne</strong> (<span id="timer-display">00:00</span>)</p>
                 <div class="flex-row">
+                    <label>Profil : <select id="profile-select"><option value="random">Aléatoire (BDD)</option></select></label>
+                    <label>Mode : <select id="verification-mode"><option value="trust">Confiance</option><option value="strict">Strict (Vérification)</option></select></label>
+                </div>
+                <div class="flex-row" style="margin-top:10px;">
                     <input type="number" id="timer-duration" value="10" min="1" style="width: 80px;" title="Durée en minutes"> min
                     <button id="start-game-btn">Lancer le Live</button>
                     <button id="stop-game-btn" class="danger-btn">Arrêter le Live</button>
+                </div>
+            </div>
+
+            <div class="admin-controls" id="live-control-section" style="display:none; background:#d4edda;">
+                <h3>Contrôle du Live (Grille de l'Admin)</h3>
+                <p>Cochez les phrases au fur et à mesure que Aminato les réalise en live.</p>
+                <div id="admin-live-grid" class="bingo-grid" style="margin-top:10px;">
+                    <!-- Checkboxes injected by JS -->
                 </div>
             </div>
 
@@ -115,7 +129,32 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="admin-controls">
+                <h3>Gestion des Profils de Grille</h3>
+                <p>Créez un profil en collant 16 phrases (une par ligne).</p>
+                <div class="flex-row" style="margin-bottom: 10px; align-items: flex-start;">
+                    <div style="display:flex; flex-direction:column; gap:5px; flex:1;">
+                        <input type="text" id="new-profile-name" placeholder="Nom du Profil (ex: Soirée LoL)">
+                        <textarea id="new-profile-phrases" rows="6" placeholder="Collez ici vos 16 phrases (une par ligne)..."></textarea>
+                    </div>
+                    <button id="add-profile-btn" style="height: fit-content;">Sauvegarder Profil</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profiles-table-body">
+                    </tbody>
+                </table>
+            </div>
             
+
             <div class="admin-controls" id="superadmin-section">
                 <h3>Gestion de l'Équipe (Superadmin uniquement)</h3>
                 <p>Créer un compte vous permet d'ajouter d'autres modérateurs.</p>

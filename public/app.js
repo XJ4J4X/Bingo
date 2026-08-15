@@ -1,11 +1,20 @@
+// Aminato si tu lis cette phrase j'ai galerer mdr -- J4X
 console.log('%c' + `
+          .-----.         _    __  __ ___ _  _    _ _____ ___  
+        /         \\      /_\\  |  \\/  |_ _| \\| |  /_\\_   _/ _ \\ 
+       |   O   O   |    / _ \\ | |\\/| || || .' | / _ \\| || (_) |
+       |           |   /_/ \\_\\|_|  |_|___|_|\\_|/_/ \\_\\_| \\___/ 
+       |           |
+       |           |
+       '~~^~~^~~^~~'
+` + '%c' + `
       __ _  _  __  __   _______ ______ _____ _    _ 
      | | || || \\ \\/ /  |__   __|  ____/ ____| |  | |
      | | || ||_|>  <      | |  | |__ | |    | |__| |
  _   | |__   _|/ /\\ \\     | |  |  __|| |    |  __  |
 | |__| |  | | / ____ \\    | |  | |___| |____| |  | |
  \\____/   |_|/_/    \\_\\   |_|  |______\\_____|_|  |_|
-`, "color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #00ff00;");
+`, "color: #ffffff; font-weight: bold; text-shadow: 0 0 10px #ffffff;", "color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #00ff00;");
 
 let currentUser = null;
 let currentPassword = null;
@@ -194,10 +203,19 @@ function generateGrid() {
     for (let i = 0; i < 16; i++) {
         const cell = document.createElement('div');
         cell.className = 'bingo-cell';
-        cell.textContent = phrasesToUse[i] || "Case Vide";
+        const phraseText = phrasesToUse[i] || "Case Vide";
+        cell.setAttribute('data-phrase', phraseText);
+        cell.innerHTML = phraseText.replace(/J4X/gi, '<span style="color: red; text-shadow: 0 0 5px red; font-weight: bold;">J4X</span>');
         
         cell.addEventListener('click', () => {
             if (!gridLocked) {
+                if (!cell.classList.contains('checked')) {
+                    const checkedCount = document.querySelectorAll('.bingo-cell.checked').length;
+                    if (checkedCount >= 5) {
+                        alert("Anti-triche : Vous ne pouvez cocher que 5 cases maximum !");
+                        return;
+                    }
+                }
                 cell.classList.toggle('checked');
             }
         });
@@ -223,32 +241,35 @@ async function syncState() {
         if (isGameActive) {
             timerDisplay.textContent = formatTime(timeLeft);
             gridLocked = false;
-            validateGridBtn.disabled = true;
             
             if(!hasSubmittedScore) {
-                gameMessage.textContent = "Live en cours... Cochez les cases !";
+                validateGridBtn.disabled = false;
+                gameMessage.textContent = "Live en cours... Cochez max 5 cases et validez !";
                 gameMessage.style.color = "blue";
             }
         } else {
             timerDisplay.textContent = "00:00 - HORS LIGNE";
             gridLocked = true;
+            validateGridBtn.disabled = true;
             
-            if (!hasSubmittedScore && timeLeft === 0 && timerDisplay.textContent !== "00:00 - HORS LIGNE") {
-               validateGridBtn.disabled = false;
-               gameMessage.textContent = "Le Live est terminé, validez votre grille !";
+            // Auto validation when game ends or is stopped manually by Admin!
+            if (!hasSubmittedScore && window.wasGameActive && window.currentUser) {
+                gameMessage.textContent = "Fin du Live ! Validation automatique en cours...";
+                gameMessage.style.color = "orange";
+                validateGridBtn.disabled = false;
+                validateGridBtn.click();
+            }
+            else if (!hasSubmittedScore && timeLeft === 0 && timerDisplay.textContent !== "00:00 - HORS LIGNE") {
+               gameMessage.textContent = "Le Live est terminé.";
                gameMessage.style.color = "orange";
             } 
             else if (!hasSubmittedScore && timeLeft === 0) {
-               validateGridBtn.disabled = true;
                gameMessage.textContent = "En attente du lancement du Live par l'administrateur.";
                gameMessage.style.color = "gray";
             }
         }
         
-        if (!isGameActive && timeLeft === 0 && !hasSubmittedScore && document.querySelectorAll('.bingo-cell.checked').length > 0) {
-            validateGridBtn.disabled = false;
-        }
-
+        window.wasGameActive = isGameActive;
     } catch (err) {
         console.error("Erreur sync game state", err);
     }
@@ -257,10 +278,11 @@ async function syncState() {
 validateGridBtn.addEventListener('click', async () => {
     if (!currentUser || !currentPassword || hasSubmittedScore) return;
     
-    const checkedCount = document.querySelectorAll('.bingo-cell.checked').length;
-    const score = checkedCount * 10;
+    const checkedCells = document.querySelectorAll('.bingo-cell.checked');
+    const checkedPhrases = Array.from(checkedCells).map(c => c.getAttribute('data-phrase'));
     
     validateGridBtn.disabled = true;
+    gridLocked = true;
     
     try {
         const res = await fetch('/api/score', {
@@ -269,24 +291,27 @@ validateGridBtn.addEventListener('click', async () => {
             body: JSON.stringify({
                 pseudo: currentUser,
                 password: currentPassword,
-                score: score
+                checked_phrases: checkedPhrases
             })
         });
         
+        const data = await res.json();
         if (res.ok) {
             gameMessage.style.color = "green";
-            gameMessage.textContent = `Grille validée ! Vous avez gagné ${score} points.`;
+            gameMessage.textContent = `Grille validée ! Vous avez maintenant ${data.new_score} points.`;
             hasSubmittedScore = true;
             loadLeaderboard();
         } else {
             gameMessage.style.color = "red";
             gameMessage.textContent = "Erreur lors de la validation.";
             validateGridBtn.disabled = false;
+            gridLocked = false;
         }
     } catch (err) {
         gameMessage.style.color = "red";
         gameMessage.textContent = "Erreur de connexion au serveur.";
         validateGridBtn.disabled = false;
+        gridLocked = false;
     }
 });
 
@@ -317,3 +342,26 @@ async function loadLeaderboard() {
 }
 
 init();
+
+// Theme toggle logic
+document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('theme-toggle');
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        if (themeBtn) themeBtn.textContent = '☀️';
+    }
+    
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeBtn.textContent = '☀️';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeBtn.textContent = '🌙';
+            }
+        });
+    }
+});
