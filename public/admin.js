@@ -84,6 +84,7 @@ function fetchWithAuth(url, options = {}) {
 function initAdmin() {
     loadUsers();
     loadPhrases();
+    loadProfiles();
     syncGameState();
     
     if (adminRole === 'superadmin') {
@@ -112,24 +113,83 @@ async function syncGameState() {
             gameStatus.textContent = "En cours";
             gameStatus.style.color = "green";
             timerDisplay.textContent = formatTime(data.time_left);
+            document.getElementById('live-control-section').style.display = 'block';
+            loadLiveData();
         } else {
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
             timerDisplay.textContent = "00:00";
+            document.getElementById('live-control-section').style.display = 'none';
         }
     } catch (err) {
         console.error("Erreur sync timer", err);
     }
 }
 
+async function loadLiveData() {
+    try {
+        const res = await fetchWithAuth('/api/admin/game/live_data');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const grid = document.getElementById('admin-live-grid');
+        
+        // If empty, create the grid cells
+        if (grid.children.length === 0) {
+            data.active_phrases.forEach(phrase => {
+                const escapedPhrase = phrase.replace(/'/g, "\'");
+                const cell = document.createElement('div');
+                cell.className = 'bingo-cell';
+                cell.id = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
+                
+                const highlighted = phrase.replace(/J4X/gi, '<span style="color: red; text-shadow: 0 0 5px red; font-weight: bold;">J4X</span>');
+                cell.innerHTML = highlighted;
+                
+                cell.addEventListener('click', () => {
+                    const newlyChecked = !cell.classList.contains('checked');
+                    cell.classList.toggle('checked');
+                    toggleTick(escapedPhrase, newlyChecked);
+                });
+                
+                grid.appendChild(cell);
+            });
+        }
+        
+        // Update their checked status without overwriting the DOM
+        data.active_phrases.forEach(phrase => {
+            const isChecked = data.admin_ticked.includes(phrase);
+            const chkId = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
+            const cell = document.getElementById(chkId);
+            if (cell) {
+                if (isChecked && !cell.classList.contains('checked')) {
+                    cell.classList.add('checked');
+                } else if (!isChecked && cell.classList.contains('checked')) {
+                    cell.classList.remove('checked');
+                }
+            }
+        });
+    } catch (err) { console.error(err); }
+}
+
+window.toggleTick = async function(phrase, isChecked) {
+    await fetchWithAuth('/api/admin/game/tick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase: phrase, checked: isChecked })
+    });
+};
+
+
 startGameBtn.addEventListener('click', async () => {
     const durationMins = parseInt(timerDurationInput.value, 10) || 10;
     const durationSecs = durationMins * 60;
+    const profileId = document.getElementById('profile-select').value;
+    const verificationMode = document.getElementById('verification-mode').value;
     
     await fetchWithAuth('/api/admin/game/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: durationSecs })
+        body: JSON.stringify({ duration: durationSecs, profile_id: profileId, verification_mode: verificationMode })
     });
     syncGameState();
 });
@@ -334,3 +394,84 @@ async function loadAdmins() {
         });
     } catch (e) { console.error(e); }
 }
+
+async function loadProfiles() {
+    try {
+        const res = await fetchWithAuth('/api/admin/profiles');
+        if (!res.ok) return;
+        const profiles = await res.json();
+        
+        const select = document.getElementById('profile-select');
+        select.innerHTML = '<option value="random">Aléatoire (BDD)</option>';
+        
+        const tbody = document.getElementById('profiles-table-body');
+        tbody.innerHTML = '';
+        
+        profiles.forEach(p => {
+            select.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${p.id}</td>
+                <td><strong>${p.name}</strong></td>
+                <td><button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">Supprimer</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        document.querySelectorAll('.delete-profile-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm('Supprimer ce profil ?')) {
+                    const id = e.target.getAttribute('data-id');
+                    await fetchWithAuth('/api/admin/profiles/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id })
+                    });
+                    loadProfiles();
+                }
+            });
+        });
+    } catch (e) { console.error(e); }
+}
+
+const addProfileBtn = document.getElementById('add-profile-btn');
+if (addProfileBtn) {
+    addProfileBtn.addEventListener('click', async () => {
+        const name = document.getElementById('new-profile-name').value.trim();
+        const text = document.getElementById('new-profile-phrases').value.trim();
+        if (name && text) {
+            await fetchWithAuth('/api/admin/profiles/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, phrases_text: text })
+            });
+            document.getElementById('new-profile-name').value = '';
+            document.getElementById('new-profile-phrases').value = '';
+            loadProfiles();
+        }
+    });
+}
+
+// Theme toggle logic
+document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('theme-toggle');
+    const currentTheme = localStorage.getItem('theme');
+    if (currentTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        if (themeBtn) themeBtn.textContent = '☀️';
+    }
+    
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            if (document.body.classList.contains('dark-mode')) {
+                localStorage.setItem('theme', 'dark');
+                themeBtn.textContent = '☀️';
+            } else {
+                localStorage.setItem('theme', 'light');
+                themeBtn.textContent = '🌙';
+            }
+        });
+    }
+});

@@ -178,3 +178,68 @@ th {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* Dark Mode */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+body.dark-mode header {
+    background-color: #1f1f1f;
+    border-bottom: 1px solid #333;
+}
+body.dark-mode section {
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+body.dark-mode input {
+    background-color: #333;
+    color: #fff;
+    border-color: #444;
+}
+body.dark-mode .bingo-cell {
+    background-color: #2c2c2c;
+    border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .bingo-cell:hover {
+    background-color: #3c3c3c;
+}
+body.dark-mode .bingo-cell.checked {
+    background-color: #27ae60;
+    color: white;
+    border-color: #1e8449;
+}
+body.dark-mode table, body.dark-mode th, body.dark-mode td {
+    border-color: #444;
+}
+body.dark-mode th {
+    background-color: #2a2a2a;
+}
+body.dark-mode .admin-controls {
+    background-color: #252525;
+    border-color: #333;
+}
+body.dark-mode #generated-password {
+    background-color: #1b4f42;
+    border-color: #1abc9c;
+}
+body.dark-mode #password-display {
+    color: #1abc9c;
+}
+
+#theme-toggle {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0;
+}
+#theme-toggle:hover {
+    background: none;
+    transform: scale(1.1);
+}
