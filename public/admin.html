@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Aminato Bingo</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        .admin-section {
+            display: none;
+        }
+        
+        .admin-controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #eef;
+            border-radius: 5px;
+            border: 1px solid #ccd;
+        }
+        
+        .admin-controls h3 { margin-top: 0; }
+        
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .danger-btn { background-color: #e74c3c; }
+        .danger-btn:hover { background-color: #c0392b; }
+        .warning-btn { background-color: #f39c12; }
+        .warning-btn:hover { background-color: #d68910; }
+        .success-btn { background-color: #2ecc71; }
+        .success-btn:hover { background-color: #27ae60; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .small-btn { padding: 5px 10px; font-size: 0.8em; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Panel Administrateur ⚙️</h1>
+        <div id="admin-info" class="hidden">
+            Connecté. <button id="logout-btn">Déconnexion</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="login-section">
+            <div class="auth-box">
+                <h2>Accès Restreint</h2>
+                <div class="input-group">
+                    <input type="password" id="admin-password" placeholder="Mot de passe admin" />
+                </div>
+                <button id="login-btn">Se connecter</button>
+                <div id="login-message" style="color:red; margin-top: 10px;"></div>
+            </div>
+        </section>
+
+        <section id="admin-content" class="admin-section">
+            
+            <div class="admin-controls">
+                <h3>Gestion du Live (Timer Global)</h3>
+                <p>État actuel : <strong id="game-status">Hors Ligne</strong> (<span id="timer-display">00:00</span>)</p>
+                <div class="flex-row">
+                    <input type="number" id="timer-duration" value="10" min="1" style="width: 80px;" title="Durée en minutes"> min
+                    <button id="start-game-btn">Lancer le Live</button>
+                    <button id="stop-game-btn" class="danger-btn">Arrêter le Live</button>
+                </div>
+            </div>
+
+            <div class="admin-controls">
+                <h3>Gestion des Utilisateurs</h3>
+                <div class="flex-row" style="margin-bottom: 10px;">
+                    <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
+                    
+                    <input type="text" id="new-user-pseudo" placeholder="Pseudo du nouveau joueur">
+                    <button id="create-user-btn">Créer le joueur</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Pseudo</th>
+                            <th>Mots de passe</th>
+                            <th>Score</th>
+                            <th>Points (+/-)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="admin-controls">
+                <h3>Gestion des Phrases Bingo</h3>
+                <div class="flex-row" style="margin-bottom: 10px;">
+                    <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase..." style="flex:1;">
+                    <button id="add-phrase-btn">Ajouter phrase</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Phrase</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="phrases-table-body">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="admin-controls" id="superadmin-section">
+                <h3>Gestion de l'Équipe (Superadmin uniquement)</h3>
+                <p>Créer un compte vous permet d'ajouter d'autres modérateurs.</p>
+                <div class="flex-row" style="margin-bottom: 10px;">
+                    <input type="text" id="new-admin-password" placeholder="Nouveau mot de passe admin...">
+                    <button id="create-admin-btn" class="success-btn">Créer ce compte admin</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Mot de passe</th>
+                            <th>Rôle</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admins-table-body">
+                    </tbody>
+                </table>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="admin.js"></script>
+</body>
+</html>

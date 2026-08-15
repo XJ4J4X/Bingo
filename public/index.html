@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aminato Bingo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Aminato Bingo 🎮</h1>
+        
+        <div id="user-info" class="hidden">
+            Connecté en tant que: <span id="current-pseudo"></span>
+            <button id="logout-btn">Déconnexion</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="auth-section">
+            <div class="auth-box">
+                <h2>Rejoindre la partie</h2>
+                <p>Pas d'email, juste un pseudo !</p>
+                
+                <div class="input-group">
+                    <input type="text" id="pseudo-input" placeholder="Ton pseudo" />
+                </div>
+                
+                <div id="password-group" class="input-group hidden">
+                    <input type="text" id="password-input" placeholder="Tes 3 mots secrets (ex: pomme-chaise-mur)" />
+                </div>
+
+                <div class="auth-buttons">
+                    <button id="login-btn" class="hidden">Se connecter</button>
+                    <button id="register-btn">Créer un compte</button>
+                </div>
+
+                <div id="auth-message"></div>
+                
+                <div id="generated-password" class="hidden">
+                    <p>Voici ton mot de passe. Garde-le bien, il ne sera plus affiché !</p>
+                    <strong id="password-display"></strong>
+                    <button id="continue-to-game-btn">Continuer vers le jeu</button>
+                </div>
+                
+                <p class="switch-auth">
+                    <a href="#" id="switch-to-login">J'ai déjà un compte</a>
+                    <a href="#" id="switch-to-register" class="hidden">Je veux créer un compte</a>
+                </p>
+            </div>
+        </section>
+
+        <section id="game-section" class="hidden">
+            
+            <div class="game-header">
+                <h2>Fin du live dans : <span id="timer">10:00</span></h2>
+                <button id="validate-grid-btn" disabled>Valider ma grille</button>
+            </div>
+            
+            <div id="bingo-grid" class="grid">
+            </div>
+            
+            <div id="game-message"></div>
+        </section>
+
+        <section id="leaderboard-section">
+            <h2>Classement</h2>
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Pseudo</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

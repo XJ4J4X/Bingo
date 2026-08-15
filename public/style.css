@@ -1,0 +1,180 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+}
+
+header {
+    background-color: #2c3e50;
+    color: white;
+    width: 100%;
+    padding: 20px 0;
+    text-align: center;
+    position: relative;
+}
+
+header h1 {
+    margin: 0;
+}
+
+#user-info {
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+#logout-btn {
+    margin-left: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+main {
+    width: 90%;
+    max-width: 800px;
+    margin-top: 20px;
+}
+
+section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.auth-box {
+    text-align: center;
+}
+
+.input-group {
+    margin: 10px 0;
+}
+
+input {
+    padding: 10px;
+    width: 80%;
+    max-width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+button:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+#auth-message, #game-message {
+    margin-top: 15px;
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+#generated-password {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #e8f8f5;
+    border: 1px solid #1abc9c;
+    border-radius: 4px;
+}
+
+#password-display {
+    font-size: 1.2em;
+    color: #16a085;
+    display: block;
+    margin: 10px 0;
+}
+
+.switch-auth {
+    margin-top: 20px;
+    font-size: 0.9em;
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#timer {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.bingo-cell {
+    background-color: #ecf0f1;
+    border: 2px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 20px 10px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.bingo-cell:hover {
+    background-color: #e0e6ed;
+}
+
+.bingo-cell.checked {
+    background-color: #2ecc71;
+    color: white;
+    border-color: #27ae60;
+    text-decoration: line-through;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f8f9fa;
+}
+
+@media (max-width: 600px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
