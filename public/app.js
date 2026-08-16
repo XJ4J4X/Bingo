@@ -270,6 +270,7 @@ async function syncState() {
         }
         
         window.wasGameActive = isGameActive;
+        loadLeaderboard();
     } catch (err) {
         console.error("Erreur sync game state", err);
     }
