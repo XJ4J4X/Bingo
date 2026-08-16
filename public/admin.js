@@ -57,6 +57,8 @@ loginBtn.addEventListener('click', async () => {
         if (res.ok && data.success) {
             adminToken = data.token;
             adminRole = data.role;
+            localStorage.setItem('adminToken', adminToken);
+            localStorage.setItem('adminRole', adminRole);
             loginSection.style.display = 'none';
             adminContent.style.display = 'block';
             adminInfo.classList.remove('hidden');
@@ -69,21 +71,28 @@ loginBtn.addEventListener('click', async () => {
     }
 });
 
-logoutBtn.addEventListener('click', () => {
+function logoutAdmin() {
     adminToken = null;
     adminRole = null;
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRole');
     loginSection.style.display = 'block';
     adminContent.style.display = 'none';
     adminInfo.classList.add('hidden');
     adminPasswordInput.value = '';
-    
     clearInterval(stateInterval);
-});
+}
 
-function fetchWithAuth(url, options = {}) {
+logoutBtn.addEventListener('click', logoutAdmin);
+
+async function fetchWithAuth(url, options = {}) {
     if (!options.headers) options.headers = {};
     options.headers['Authorization'] = `Bearer ${adminToken}`;
-    return fetch(url, options);
+    const res = await fetch(url, options);
+    if (res.status === 401 || res.status === 403) {
+        logoutAdmin();
+    }
+    return res;
 }
 
 function initAdmin() {
@@ -102,6 +111,20 @@ function initAdmin() {
     clearInterval(stateInterval);
     stateInterval = setInterval(syncGameState, 1000);
 }
+
+// Auto-login if token exists in localStorage
+document.addEventListener('DOMContentLoaded', () => {
+    const savedToken = localStorage.getItem('adminToken');
+    const savedRole = localStorage.getItem('adminRole');
+    if (savedToken && savedRole) {
+        adminToken = savedToken;
+        adminRole = savedRole;
+        loginSection.style.display = 'none';
+        adminContent.style.display = 'block';
+        adminInfo.classList.remove('hidden');
+        initAdmin();
+    }
+});
 
 function formatTime(seconds) {
     const m = Math.floor(seconds / 60);
