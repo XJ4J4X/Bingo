@@ -147,6 +147,8 @@ loginBtn.addEventListener('click', async () => {
         if (res.ok) {
             currentUser = pseudo;
             currentPassword = password;
+            localStorage.setItem('userPseudo', currentUser);
+            localStorage.setItem('userPassword', currentPassword);
             startGame();
         } else {
             const data = await res.json();
@@ -164,6 +166,8 @@ continueToGameBtn.addEventListener('click', () => {
 logoutBtn.addEventListener('click', () => {
     currentUser = null;
     currentPassword = null;
+    localStorage.removeItem('userPseudo');
+    localStorage.removeItem('userPassword');
     clearInterval(stateInterval);
     
     authSection.classList.remove('hidden');
@@ -175,6 +179,31 @@ logoutBtn.addEventListener('click', () => {
     generatedPasswordDiv.classList.add('hidden');
     registerBtn.disabled = false;
     authMessage.textContent = "";
+});
+
+// Auto-login for players
+document.addEventListener('DOMContentLoaded', async () => {
+    const savedPseudo = localStorage.getItem('userPseudo');
+    const savedPassword = localStorage.getItem('userPassword');
+    if (savedPseudo && savedPassword) {
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pseudo: savedPseudo, password: savedPassword })
+            });
+            if (res.ok) {
+                currentUser = savedPseudo;
+                currentPassword = savedPassword;
+                startGame();
+            } else {
+                localStorage.removeItem('userPseudo');
+                localStorage.removeItem('userPassword');
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
 });
 
 function startGame() {
