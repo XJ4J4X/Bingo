@@ -115,6 +115,7 @@ async function syncGameState() {
             timerDisplay.textContent = formatTime(data.time_left);
             document.getElementById('live-control-section').style.display = 'block';
             loadLiveData();
+        loadUsers();
         } else {
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
