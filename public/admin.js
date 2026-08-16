@@ -1,11 +1,16 @@
 console.log('%c' + `
-      __ _  _  __  __   _______ ______ _____ _    _ 
-     | | || || \\ \\/ /  |__   __|  ____/ ____| |  | |
-     | | || ||_|>  <      | |  | |__ | |    | |__| |
- _   | |__   _|/ /\\ \\     | |  |  __|| |    |  __  |
-| |__| |  | | / ____ \\    | |  | |___| |____| |  | |
- \\____/   |_|/_/    \\_\\   |_|  |______\\_____|_|  |_|
-`, "color: #ff0000; font-weight: bold; text-shadow: 0 0 10px #ff0000;");
+               _    __  __ ___ _  _    _ _____ ___  
+             /_\\  |  \\/  |_ _| \\| |  /_\\_   _/ _ \\ 
+            / _ \\ | |\\/| || || .' | / _ \\| || (_) |
+           /_/ \\_\\|_|  |_|___|_|\\_|/_/ \\_\\_| \\___/ 
+          .-----.
+        /         \\
+       |   O   O   |
+       |           |
+       |           |
+       |           |
+       '~~^~~^~~^~~'
+`, "color: #ffffff; font-weight: bold; text-shadow: 0 0 10px #ffffff;");
 
 let adminToken = null;
 let adminRole = null;
@@ -110,18 +115,29 @@ async function syncGameState() {
         const data = await res.json();
         
         if (data.is_active) {
-            gameStatus.textContent = "En cours";
-            gameStatus.style.color = "green";
+            if (data.is_locked) {
+                gameStatus.textContent = "Verrouillé (Vérification)";
+                gameStatus.style.color = "orange";
+                document.getElementById('stop-game-btn').textContent = "Terminer & Valider les Scores";
+                document.getElementById('stop-game-btn').className = "success-btn";
+            } else {
+                gameStatus.textContent = "En cours (Jeu)";
+                gameStatus.style.color = "green";
+                document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
+                document.getElementById('stop-game-btn').className = "danger-btn";
+            }
             timerDisplay.textContent = formatTime(data.time_left);
             document.getElementById('live-control-section').style.display = 'block';
             loadLiveData();
-        loadUsers();
         } else {
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
             timerDisplay.textContent = "00:00";
             document.getElementById('live-control-section').style.display = 'none';
+            document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
+            document.getElementById('stop-game-btn').className = "danger-btn";
         }
+        loadUsers();
     } catch (err) {
         console.error("Erreur sync timer", err);
     }
@@ -138,18 +154,17 @@ async function loadLiveData() {
         // If empty, create the grid cells
         if (grid.children.length === 0) {
             data.active_phrases.forEach(phrase => {
-                const escapedPhrase = phrase.replace(/'/g, "\'");
                 const cell = document.createElement('div');
                 cell.className = 'bingo-cell';
                 cell.id = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
                 
-                const highlighted = phrase.replace(/J4X/gi, '<span style="color: red; text-shadow: 0 0 5px red; font-weight: bold;">J4X</span>');
+                const highlighted = phrase.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
                 cell.innerHTML = highlighted;
                 
                 cell.addEventListener('click', () => {
                     const newlyChecked = !cell.classList.contains('checked');
                     cell.classList.toggle('checked');
-                    toggleTick(escapedPhrase, newlyChecked);
+                    toggleTick(phrase, newlyChecked);
                 });
                 
                 grid.appendChild(cell);
@@ -184,13 +199,23 @@ window.toggleTick = async function(phrase, isChecked) {
 startGameBtn.addEventListener('click', async () => {
     const durationMins = parseInt(timerDurationInput.value, 10) || 10;
     const durationSecs = durationMins * 60;
+    
+    const lockDurationInput = document.getElementById('timer-lock-duration');
+    const lockDurationMins = lockDurationInput ? (parseInt(lockDurationInput.value, 10) || 0) : 0;
+    const lockDurationSecs = lockDurationMins * 60;
+    
     const profileId = document.getElementById('profile-select').value;
     const verificationMode = document.getElementById('verification-mode').value;
     
     await fetchWithAuth('/api/admin/game/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration: durationSecs, profile_id: profileId, verification_mode: verificationMode })
+        body: JSON.stringify({ 
+            duration: durationSecs, 
+            lock_duration: lockDurationSecs,
+            profile_id: profileId, 
+            verification_mode: verificationMode 
+        })
     });
     syncGameState();
 });
@@ -210,10 +235,10 @@ async function loadUsers() {
         
         users.forEach(u => {
             const tr = document.createElement('tr');
-            
+            const pseudoHtml = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
             tr.innerHTML = `
                 <td>${u.id}</td>
-                <td><strong>${u.pseudo}</strong></td>
+                <td><strong>${pseudoHtml}</strong></td>
                 <td><code>${u.password}</code></td>
                 <td><strong>${u.score}</strong></td>
                 <td>
@@ -476,3 +501,88 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// --- STATS LOGIC ---
+const navMainBtn = document.getElementById('nav-main-btn');
+const navStatsBtn = document.getElementById('nav-stats-btn');
+const mainAdminPanel = document.getElementById('main-admin-panel');
+const statsSection = document.getElementById('stats-section');
+const statsUsersContainer = document.getElementById('stats-users-container');
+const statsPhrasesContainer = document.getElementById('stats-phrases-container');
+
+if (navMainBtn && navStatsBtn) {
+    navMainBtn.addEventListener('click', function() {
+        mainAdminPanel.style.display = 'block';
+        statsSection.style.display = 'none';
+        navMainBtn.className = 'success-btn';
+        navStatsBtn.className = '';
+        navStatsBtn.style.backgroundColor = '#3498db';
+        navStatsBtn.style.color = 'white';
+        navMainBtn.style.backgroundColor = '';
+        navMainBtn.style.color = '';
+    });
+    
+    navStatsBtn.addEventListener('click', function() {
+        mainAdminPanel.style.display = 'none';
+        statsSection.style.display = 'block';
+        navStatsBtn.className = 'success-btn';
+        navMainBtn.className = '';
+        navMainBtn.style.backgroundColor = '#ccc';
+        navMainBtn.style.color = '#333';
+        navStatsBtn.style.backgroundColor = '';
+        navStatsBtn.style.color = '';
+        loadStats();
+    });
+}
+
+async function loadStats() {
+    try {
+        const response = await fetchWithAuth('/api/admin/stats');
+        const data = await response.json();
+        
+        statsUsersContainer.innerHTML = '';
+        if (data.users.length === 0) {
+            statsUsersContainer.innerHTML = '<p>Aucune donnée disponible.</p>';
+        } else {
+            const maxScore = Math.max(...data.users.map(u => u.score), 100);
+            data.users.forEach(user => {
+                const percentage = Math.min((user.score / maxScore) * 100, 100);
+                statsUsersContainer.innerHTML += `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <strong>${user.pseudo}</strong>
+                            <span>${user.score} pts</span>
+                        </div>
+                        <div style="background-color: #ecf0f1; border-radius: 4px; height: 16px; width: 100%; overflow: hidden;">
+                            <div style="background-color: #3498db; width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        statsPhrasesContainer.innerHTML = '';
+        if (data.phrases.length === 0) {
+            statsPhrasesContainer.innerHTML = '<p>Aucune donnée disponible.</p>';
+        } else {
+            const maxCount = Math.max(...data.phrases.map(p => p.count), 5);
+            data.phrases.forEach(item => {
+                const percentage = Math.min((item.count / maxCount) * 100, 100);
+                statsPhrasesContainer.innerHTML += `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
+                            <strong>${item.phrase}</strong>
+                            <span>${item.count} fois</span>
+                        </div>
+                        <div style="background-color: #ecf0f1; border-radius: 4px; height: 16px; width: 100%; overflow: hidden;">
+                            <div style="background-color: #2ecc71; width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+    } catch(err) {
+        console.error("Erreur de chargement des stats:", err);
+    }
+}

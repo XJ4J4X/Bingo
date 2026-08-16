@@ -25,8 +25,11 @@ DEFAULT_PHRASES = [
 
 game_state = {
     "is_active": False,
+    "is_locked": False,
     "start_time": None,
     "duration": 600,
+    "lock_duration": 0,
+    "lock_start_time": None,
     "verification_mode": "trust",
     "active_phrases": [],
     "admin_ticked": []
@@ -126,21 +129,55 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             self.wfile.write(json.dumps(phrases_to_send).encode('utf-8'))
 
+        elif self.path == '/api/user_score':
+            pseudo = self.headers.get('pseudo', '').strip()
+            password = self.headers.get('password', '').strip()
+            if not pseudo or not password:
+                self.send_error(401)
+                return
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute('SELECT score FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            res = c.fetchone()
+            conn.close()
+            if res:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'score': res[0]}).encode('utf-8'))
+            else:
+                self.send_error(401)
+        
         elif self.path == '/api/game/state':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             
             time_left = 0
-            if game_state["is_active"] and game_state["start_time"]:
-                elapsed = time.time() - game_state["start_time"]
-                time_left = max(0, int(game_state["duration"] - elapsed))
-                if time_left == 0:
-                    game_state["is_active"] = False
-            
+            if game_state["is_active"]:
+                if not game_state.get("is_locked", False):
+                    # Phase de jeu
+                    elapsed = time.time() - game_state["start_time"] if game_state["start_time"] else 0
+                    time_left = max(0, int(game_state["duration"] - elapsed))
+                    if time_left == 0:
+                        if game_state.get("lock_duration", 0) > 0:
+                            game_state["is_locked"] = True
+                            game_state["lock_start_time"] = time.time()
+                            time_left = game_state["lock_duration"]
+                        else:
+                            game_state["is_active"] = False
+                else:
+                    # Phase de verrouillage
+                    elapsed = time.time() - game_state["lock_start_time"] if game_state["lock_start_time"] else 0
+                    time_left = max(0, int(game_state["lock_duration"] - elapsed))
+                    if time_left == 0:
+                        game_state["is_active"] = False
+                        game_state["is_locked"] = False
             self.wfile.write(json.dumps({
                 "is_active": game_state["is_active"],
-                "time_left": time_left
+                "is_locked": game_state.get("is_locked", False),
+                "time_left": time_left,
+                "verification_mode": game_state.get("verification_mode", "auto")
             }).encode('utf-8'))
 
         elif self.path == '/api/admin/users':
@@ -253,6 +290,16 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             user = c.fetchone()
             
             if user:
+                if game_state["is_active"] and game_state["verification_mode"] == "strict":
+                    c.execute('UPDATE users SET submitted_grid = ? WHERE id = ?', (json.dumps(checked_phrases), user[0]))
+                    conn.commit()
+                    conn.close()
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True, 'pending': True}).encode('utf-8'))
+                    return
+
                 score_to_add = 0
                 if game_state["verification_mode"] == "strict":
                     for phrase in checked_phrases:
@@ -304,8 +351,11 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             if self.path == '/api/admin/game/start':
                 game_state["is_active"] = True
+                game_state["is_locked"] = False
                 game_state["start_time"] = time.time()
                 game_state["duration"] = data.get("duration", 600)
+                game_state["lock_duration"] = data.get("lock_duration", 0)
+                game_state["lock_start_time"] = None
                 game_state["verification_mode"] = data.get("verification_mode", "trust")
                 game_state["admin_ticked"] = []
                 
@@ -336,11 +386,62 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             elif self.path == '/api/admin/game/stop':
                 game_state["is_active"] = False
+                game_state["is_locked"] = False
                 game_state["start_time"] = None
+                game_state["lock_start_time"] = None
+                
+                # Evaluate scores for players who submitted early
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                
+                # Update phrase stats (amateur style code)
+                try:
+                    for phrase_said in game_state["admin_ticked"]:
+                        c.execute('SELECT count FROM phrase_stats WHERE phrase = ?', (phrase_said,))
+                        r = c.fetchone()
+                        if r:
+                            c.execute('UPDATE phrase_stats SET count = count + 1 WHERE phrase = ?', (phrase_said,))
+                        else:
+                            c.execute('INSERT INTO phrase_stats (phrase, count) VALUES (?, 1)', (phrase_said,))
+                except Exception as e:
+                    pass
+
+                c.execute('SELECT id, score, submitted_grid FROM users WHERE submitted_grid IS NOT NULL')
+                for row in c.fetchall():
+                    user_id, current_score, submitted_grid_json = row
+                    try:
+                        checked_phrases = json.loads(submitted_grid_json)
+                        score_to_add = 0
+                        for phrase in checked_phrases:
+                            if phrase in game_state["admin_ticked"]:
+                                score_to_add += 10
+                        new_score = current_score + score_to_add
+                        c.execute('UPDATE users SET score = ?, submitted_grid = NULL WHERE id = ?', (new_score, user_id))
+                    except:
+                        c.execute('UPDATE users SET submitted_grid = NULL WHERE id = ?', (user_id,))
+                conn.commit()
+                conn.close()
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                
+            elif self.path == '/api/admin/stats':
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 10')
+                usrs = c.fetchall()
+                c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 10')
+                phrs = c.fetchall()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                
+                # Format json
+                res = {"users": [{"pseudo": u[0], "score": u[1]} for u in usrs], "phrases": [{"phrase": p[0], "count": p[1]} for p in phrs]}
+                self.wfile.write(json.dumps(res).encode('utf-8'))
                 
             elif self.path == '/api/admin/users/delete':
                 user_id = data.get('id')

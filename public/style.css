@@ -243,3 +243,19 @@ body.dark-mode #password-display {
     background: none;
     transform: scale(1.1);
 }
+
+.locked-grid {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+@keyframes flashRed {
+  0% { color: red; text-shadow: 0 0 5px red; }
+  50% { color: darkred; text-shadow: 0 0 15px red; }
+  100% { color: red; text-shadow: 0 0 5px red; }
+}
+
+.j4x-highlight {
+  animation: flashRed 1s infinite;
+  font-weight: bold;
+}

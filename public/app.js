@@ -1,20 +1,17 @@
-// Aminato si tu lis cette phrase j'ai galerer mdr -- J4X
+// Aminato si tu lis cette phrase j'ai galerer mdr
 console.log('%c' + `
-          .-----.         _    __  __ ___ _  _    _ _____ ___  
-        /         \\      /_\\  |  \\/  |_ _| \\| |  /_\\_   _/ _ \\ 
-       |   O   O   |    / _ \\ | |\\/| || || .' | / _ \\| || (_) |
-       |           |   /_/ \\_\\|_|  |_|___|_|\\_|/_/ \\_\\_| \\___/ 
+               _    __  __ ___ _  _    _ _____ ___  
+             /_\\  |  \\/  |_ _| \\| |  /_\\_   _/ _ \\ 
+            / _ \\ | |\\/| || || .' | / _ \\| || (_) |
+           /_/ \\_\\|_|  |_|___|_|\\_|/_/ \\_\\_| \\___/ 
+          .-----.
+        /         \\
+       |   O   O   |
+       |           |
        |           |
        |           |
        '~~^~~^~~^~~'
-` + '%c' + `
-      __ _  _  __  __   _______ ______ _____ _    _ 
-     | | || || \\ \\/ /  |__   __|  ____/ ____| |  | |
-     | | || ||_|>  <      | |  | |__ | |    | |__| |
- _   | |__   _|/ /\\ \\     | |  |  __|| |    |  __  |
-| |__| |  | | / ____ \\    | |  | |___| |____| |  | |
- \\____/   |_|/_/    \\_\\   |_|  |______\\_____|_|  |_|
-`, "color: #ffffff; font-weight: bold; text-shadow: 0 0 10px #ffffff;", "color: #00ff00; font-weight: bold; text-shadow: 0 0 10px #00ff00;");
+`, "color: #ffffff; font-weight: bold; text-shadow: 0 0 10px #ffffff;");
 
 let currentUser = null;
 let currentPassword = null;
@@ -205,7 +202,7 @@ function generateGrid() {
         cell.className = 'bingo-cell';
         const phraseText = phrasesToUse[i] || "Case Vide";
         cell.setAttribute('data-phrase', phraseText);
-        cell.innerHTML = phraseText.replace(/J4X/gi, '<span style="color: red; text-shadow: 0 0 5px red; font-weight: bold;">J4X</span>');
+        cell.innerHTML = phraseText.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
         
         cell.addEventListener('click', () => {
             if (!gridLocked) {
@@ -240,20 +237,60 @@ async function syncState() {
         
         if (isGameActive) {
             timerDisplay.textContent = formatTime(timeLeft);
-            gridLocked = false;
             
-            if(!hasSubmittedScore) {
-                validateGridBtn.disabled = false;
-                gameMessage.textContent = "Live en cours... Cochez max 5 cases et validez !";
-                gameMessage.style.color = "blue";
+            if (data.is_locked) {
+                gridLocked = true;
+                document.getElementById('bingo-grid').classList.add('locked-grid');
+                if(!hasSubmittedScore) {
+                    validateGridBtn.disabled = true;
+                    gameMessage.textContent = "VÉRIFICATION EN COURS...";
+                    gameMessage.style.color = "orange";
+                    gameMessage.style.fontWeight = "bold";
+                }
+            } else {
+                gridLocked = false;
+                document.getElementById('bingo-grid').classList.remove('locked-grid');
+                if(!hasSubmittedScore) {
+                    validateGridBtn.disabled = false;
+                    gameMessage.textContent = "Live en cours... Cochez max 5 cases et validez !";
+                    gameMessage.style.color = "blue";
+                    gameMessage.style.fontWeight = "normal";
+                }
             }
         } else {
             timerDisplay.textContent = "00:00 - HORS LIGNE";
             gridLocked = true;
             validateGridBtn.disabled = true;
             
-            // Auto validation when game ends or is stopped manually by Admin!
-            if (!hasSubmittedScore && window.wasGameActive && window.currentUser) {
+            // Si le joueur a déjà soumis mais que la partie vient de se terminer, on actualise son score final
+            if (hasSubmittedScore && window.wasGameActive && window.currentUser) {
+                try {
+                    const res = await fetch('/api/user_score', {
+                        headers: { 'pseudo': currentUser, 'password': currentPassword }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        gameMessage.style.color = "green";
+                        gameMessage.textContent = `Grille validée ! Vous avez maintenant ${data.score} points.`;
+                        
+                        try {
+                            const audio = new Audio('ting.mp3');
+                            audio.play();
+                        } catch (e) { }
+                        
+                        if (typeof confetti === 'function') {
+                            confetti({
+                                particleCount: 100,
+                                spread: 70,
+                                origin: { y: 0.6 },
+                                colors: ['#00ff00', '#ffffff', '#ff0000']
+                            });
+                        }
+                    }
+                } catch(e) { console.error(e); }
+            }
+            // Auto validation when game ends or is stopped manually by Admin (if not submitted early)
+            else if (!hasSubmittedScore && window.wasGameActive && window.currentUser) {
                 gameMessage.textContent = "Fin du Live ! Validation automatique en cours...";
                 gameMessage.style.color = "orange";
                 validateGridBtn.disabled = false;
@@ -298,10 +335,30 @@ validateGridBtn.addEventListener('click', async () => {
         
         const data = await res.json();
         if (res.ok) {
-            gameMessage.style.color = "green";
-            gameMessage.textContent = `Grille validée ! Vous avez maintenant ${data.new_score} points.`;
             hasSubmittedScore = true;
-            loadLeaderboard();
+            if (data.pending) {
+                gameMessage.style.color = "orange";
+                gameMessage.textContent = "Grille envoyée ! En attente de la validation de l'administrateur à la fin du live...";
+            } else {
+                gameMessage.style.color = "green";
+                gameMessage.textContent = `Grille validée ! Vous avez maintenant ${data.new_score} points.`;
+                loadLeaderboard();
+                
+                // Effets de célébration
+                try {
+                    const audio = new Audio('ting.mp3');
+                    audio.play();
+                } catch (e) { console.error("Audio play failed:", e); }
+                
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#00ff00', '#ffffff', '#ff0000']
+                    });
+                }
+            }
         } else {
             gameMessage.style.color = "red";
             gameMessage.textContent = "Erreur lors de la validation.";
@@ -330,9 +387,10 @@ async function loadLeaderboard() {
         
         data.forEach((user, index) => {
             const tr = document.createElement('tr');
+            const pseudoHtml = user.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
             tr.innerHTML = `
                 <td>#${index + 1}</td>
-                <td>${user.pseudo}</td>
+                <td>${pseudoHtml}</td>
                 <td>${user.score} pts</td>
             `;
             leaderboardBody.appendChild(tr);
