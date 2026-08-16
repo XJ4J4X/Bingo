@@ -43,9 +43,17 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pseudo TEXT UNIQUE,
             password_words TEXT,
-            score INTEGER DEFAULT 0
+            score INTEGER DEFAULT 0,
+            submitted_grid TEXT
         )
     ''')
+    
+    # Check if submitted_grid column exists (for migrating older DBs)
+    c.execute("PRAGMA table_info(users)")
+    columns = [col[1] for col in c.fetchall()]
+    if 'submitted_grid' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN submitted_grid TEXT")
+        
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,6 +73,13 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE,
             phrases_text TEXT
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS phrase_stats (
+            phrase TEXT PRIMARY KEY,
+            count INTEGER DEFAULT 0
         )
     ''')
     
