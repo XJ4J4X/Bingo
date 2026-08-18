@@ -16,7 +16,7 @@ IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
 
 def get_db_connection():
     if IS_POSTGRES:
-        if not psycopg2:
+        if not psycopg:
             raise RuntimeError("psycopg is not installed but DATABASE_URL is set.")
         conn = psycopg.connect(DATABASE_URL)
         original_cursor = conn.cursor
