@@ -20,14 +20,17 @@ def get_db_connection():
             raise RuntimeError("psycopg is not installed but DATABASE_URL is set.")
         conn = psycopg.connect(DATABASE_URL)
         original_cursor = conn.cursor
-        def patched_cursor(*args, **kwargs):
-            c = original_cursor(*args, **kwargs)
-            original_execute = c.execute
-            def patched_execute(query, params=()):
+        class CursorWrapper:
+            def __init__(self, cursor):
+                self._cursor = cursor
+            def execute(self, query, params=()):
                 q = query.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
-                return original_execute(q, params)
-            c.execute = patched_execute
-            return c
+                return self._cursor.execute(q, params)
+            def __getattr__(self, name):
+                return getattr(self._cursor, name)
+                
+        def patched_cursor(*args, **kwargs):
+            return CursorWrapper(original_cursor(*args, **kwargs))
         conn.cursor = patched_cursor
         return conn
     return sqlite3.connect(DB_FILE)
