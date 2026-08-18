@@ -502,6 +502,31 @@ if (addProfileBtn) {
     });
 }
 
+const backupBtn = document.getElementById('backup-btn');
+if (backupBtn) {
+    backupBtn.addEventListener('click', async () => {
+        try {
+            const res = await fetchWithAuth('/api/admin/backup');
+            if (!res.ok) {
+                alert("Erreur lors de la sauvegarde.");
+                return;
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `bingo_sauvegarde_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error("Backup failed", e);
+            alert("Erreur lors du téléchargement.");
+        }
+    });
+}
+
 // Theme toggle logic
 document.addEventListener('DOMContentLoaded', () => {
     const themeBtn = document.getElementById('theme-toggle');
