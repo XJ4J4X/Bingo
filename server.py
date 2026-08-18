@@ -32,7 +32,7 @@ def get_db_connection():
         return conn
     return sqlite3.connect(DB_FILE)
 
-DBIntegrityError = psycopg.IntegrityError if IS_POSTGRES and psycopg2 else sqlite3.IntegrityError
+DBIntegrityError = psycopg.IntegrityError if IS_POSTGRES and psycopg else sqlite3.IntegrityError
 import time
 
 PORT = 8080
