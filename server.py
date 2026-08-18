@@ -3,8 +3,35 @@ import http.server
 import socketserver
 import json
 import sqlite3
-import random
 import os
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
+
+def get_db_connection():
+    if IS_POSTGRES:
+        if not psycopg2:
+            raise RuntimeError("psycopg2 is not installed but DATABASE_URL is set.")
+        conn = psycopg2.connect(DATABASE_URL)
+        original_cursor = conn.cursor
+        def patched_cursor(*args, **kwargs):
+            c = original_cursor(*args, **kwargs)
+            original_execute = c.execute
+            def patched_execute(query, params=()):
+                q = query.replace('?', '%s').replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+                return original_execute(q, params)
+            c.execute = patched_execute
+            return c
+        conn.cursor = patched_cursor
+        return conn
+    return sqlite3.connect(DB_FILE)
+
+DBIntegrityError = psycopg2.IntegrityError if IS_POSTGRES and psycopg2 else sqlite3.IntegrityError
 import time
 
 PORT = 8080
@@ -36,7 +63,7 @@ game_state = {
 }
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -48,12 +75,15 @@ def init_db():
         )
     ''')
     
-    # Check if submitted_grid column exists (for migrating older DBs)
-    c.execute("PRAGMA table_info(users)")
-    columns = [col[1] for col in c.fetchall()]
+    if IS_POSTGRES:
+        c.execute("SELECT column_name FROM information_schema.columns WHERE table_name='users'")
+        columns = [col[0] for col in c.fetchall()]
+    else:
+        c.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in c.fetchall()]
+        
     if 'submitted_grid' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN submitted_grid TEXT")
-        
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +121,9 @@ def init_db():
     c.execute('SELECT COUNT(*) FROM admins')
     if c.fetchone()[0] == 0:
         c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', ("Xz7!Kj9$Lm2@Qw1", "superadmin"))
-    
+        c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', ("Admin$1Bng", "admin"))
+        c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', ("Aminato2!Live", "admin"))
+        c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', ("Bingo#Mod3", "admin"))
     conn.commit()
     conn.close()
 
@@ -102,7 +134,7 @@ def check_admin(headers):
     
     provided_password = auth_header.split("Bearer ")[1]
     
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT id, role FROM admins WHERE password = ?', (provided_password,))
     admin = c.fetchone()
@@ -121,7 +153,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 50')
             users = [{'pseudo': row[0], 'score': row[1]} for row in c.fetchall()]
@@ -136,7 +168,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             if game_state["is_active"] and game_state["active_phrases"]:
                 phrases_to_send = [{'id': i, 'phrase': p} for i, p in enumerate(game_state["active_phrases"])]
             else:
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('SELECT id, phrase FROM phrases')
                 phrases_to_send = [{'id': row[0], 'phrase': row[1]} for row in c.fetchall()]
@@ -150,7 +182,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             if not pseudo or not password:
                 self.send_error(401)
                 return
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT score FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             res = c.fetchone()
@@ -204,7 +236,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id, pseudo, password_words, score FROM users')
             users = [{'id': row[0], 'pseudo': row[1], 'password': row[2], 'score': row[3]} for row in c.fetchall()]
@@ -212,7 +244,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(users).encode('utf-8'))
 
         elif self.path == '/api/admin/profiles':
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id, name, phrases_text FROM profiles')
             profiles = [{'id': row[0], 'name': row[1], 'phrases': row[2]} for row in c.fetchall()]
@@ -230,6 +262,59 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'active_phrases': game_state["active_phrases"],
                 'admin_ticked': game_state["admin_ticked"]
             }).encode('utf-8'))
+            
+        elif self.path == '/ping':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'pong')
+
+        elif self.path == '/api/admin/backup':
+            admin = check_admin(self.headers)
+            if not admin or admin['role'] != 'superadmin':
+                self.send_response(401)
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode('utf-8'))
+                return
+                
+            conn = get_db_connection()
+            c = conn.cursor()
+            backup_data = {}
+            c.execute('SELECT * FROM users')
+            users = c.fetchall()
+            backup_data['users'] = [{'id': u[0], 'pseudo': u[1], 'score': u[3], 'submitted_grid': u[4]} for u in users]
+            c.execute('SELECT * FROM phrase_stats')
+            stats = c.fetchall()
+            backup_data['phrase_stats'] = [{'phrase': s[0], 'count': s[1]} for s in stats]
+            c.execute('SELECT * FROM profiles')
+            profiles = c.fetchall()
+            backup_data['profiles'] = [{'id': p[0], 'name': p[1], 'phrases': p[2]} for p in profiles]
+            conn.close()
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Content-Disposition', 'attachment; filename="bingo_backup.json"')
+            self.end_headers()
+            self.wfile.write(json.dumps(backup_data, indent=2).encode('utf-8'))
+
+        elif self.path == '/api/admin/stats':
+            admin = check_admin(self.headers)
+            if not admin:
+                self.send_response(401)
+                self.end_headers()
+                return
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 10')
+            usrs = c.fetchall()
+            c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 10')
+            phrs = c.fetchall()
+            conn.close()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            res = {"users": [{"pseudo": u[0], "score": u[1]} for u in usrs], "phrases": [{"phrase": p[0], "count": p[1]} for p in phrs]}
+            self.wfile.write(json.dumps(res).encode('utf-8'))
             
         else:
             super().do_GET()
@@ -251,7 +336,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(400, "Bad Request")
                 return
 
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             try:
                 c.execute('SELECT id FROM users WHERE pseudo = ?', (pseudo,))
@@ -274,7 +359,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
             
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
@@ -299,7 +384,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(400, "Bad Request")
                 return
 
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id, score FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
@@ -340,7 +425,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/api/admin/login':
             password = data.get('password')
             
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id, role FROM admins WHERE password = ?', (password,))
             admin = c.fetchone()
@@ -375,7 +460,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["admin_ticked"] = []
                 
                 profile_id = data.get("profile_id")
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 if profile_id and str(profile_id) != "random":
                     c.execute('SELECT phrases_text FROM profiles WHERE id = ?', (profile_id,))
@@ -406,7 +491,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["lock_start_time"] = None
                 
                 # Evaluate scores for players who submitted early
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 
                 # Update phrase stats (amateur style code)
@@ -443,7 +528,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
             elif self.path == '/api/admin/stats':
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 10')
                 usrs = c.fetchall()
@@ -460,7 +545,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             elif self.path == '/api/admin/users/delete':
                 user_id = data.get('id')
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('DELETE FROM users WHERE id = ?', (user_id,))
                 conn.commit()
@@ -471,7 +556,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
             elif self.path == '/api/admin/users/reset':
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('UPDATE users SET score = 0')
                 conn.commit()
@@ -485,7 +570,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 user_id = data.get('id')
                 points_to_add = data.get('points')
                 
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('SELECT score FROM users WHERE id = ?', (user_id,))
                 result = c.fetchone()
@@ -512,13 +597,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     
                 new_password = data.get('password', '').strip()
                 if new_password:
-                    conn = sqlite3.connect(DB_FILE)
+                    conn = get_db_connection()
                     c = conn.cursor()
                     try:
                         c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', (new_password, 'admin'))
                         conn.commit()
                         self.send_response(200)
-                    except sqlite3.IntegrityError:
+                    except DBIntegrityError:
                         self.send_response(400)
                     finally:
                         conn.close()
@@ -533,7 +618,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.wfile.write(json.dumps({'error': 'Forbidden'}).encode('utf-8'))
                     return
                     
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('SELECT id, password, role FROM admins')
                 admins_list = [{'id': row[0], 'password': row[1], 'role': row[2]} for row in c.fetchall()]
@@ -552,7 +637,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     return
                     
                 admin_id = data.get('id')
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 # Empêcher le superadmin de se supprimer lui-même
                 c.execute('DELETE FROM admins WHERE id = ? AND role != "superadmin"', (admin_id,))
@@ -567,13 +652,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif self.path == '/api/admin/phrases/add':
                 phrase = data.get('phrase', '').strip()
                 if phrase:
-                    conn = sqlite3.connect(DB_FILE)
+                    conn = get_db_connection()
                     c = conn.cursor()
                     try:
                         c.execute('INSERT INTO phrases (phrase) VALUES (?)', (phrase,))
                         conn.commit()
                         self.send_response(200)
-                    except sqlite3.IntegrityError:
+                    except DBIntegrityError:
                         self.send_response(400)
                     finally:
                         conn.close()
@@ -582,7 +667,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             elif self.path == '/api/admin/phrases/delete':
                 phrase_id = data.get('id')
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('DELETE FROM phrases WHERE id = ?', (phrase_id,))
                 conn.commit()
@@ -596,13 +681,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 name = data.get('name', '').strip()
                 phrases_text = data.get('phrases_text', '').strip()
                 if name and phrases_text:
-                    conn = sqlite3.connect(DB_FILE)
+                    conn = get_db_connection()
                     c = conn.cursor()
                     try:
                         c.execute('INSERT INTO profiles (name, phrases_text) VALUES (?, ?)', (name, phrases_text))
                         conn.commit()
                         self.send_response(200)
-                    except sqlite3.IntegrityError:
+                    except DBIntegrityError:
                         self.send_response(400)
                     finally:
                         conn.close()
@@ -611,7 +696,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             elif self.path == '/api/admin/profiles/delete':
                 profile_id = data.get('id')
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('DELETE FROM profiles WHERE id = ?', (profile_id,))
                 conn.commit()
