@@ -6,9 +6,10 @@ import sqlite3
 import os
 
 try:
-    import psycopg2
-except ImportError:
-    psycopg2 = None
+    import psycopg
+except ImportError as e:
+    psycopg = None
+    print('DEBUG IMPORT ERROR:', e)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
@@ -16,8 +17,8 @@ IS_POSTGRES = DATABASE_URL and DATABASE_URL.startswith("postgres")
 def get_db_connection():
     if IS_POSTGRES:
         if not psycopg2:
-            raise RuntimeError("psycopg2 is not installed but DATABASE_URL is set.")
-        conn = psycopg2.connect(DATABASE_URL)
+            raise RuntimeError("psycopg is not installed but DATABASE_URL is set.")
+        conn = psycopg.connect(DATABASE_URL)
         original_cursor = conn.cursor
         def patched_cursor(*args, **kwargs):
             c = original_cursor(*args, **kwargs)
@@ -31,7 +32,7 @@ def get_db_connection():
         return conn
     return sqlite3.connect(DB_FILE)
 
-DBIntegrityError = psycopg2.IntegrityError if IS_POSTGRES and psycopg2 else sqlite3.IntegrityError
+DBIntegrityError = psycopg.IntegrityError if IS_POSTGRES and psycopg2 else sqlite3.IntegrityError
 import time
 
 PORT = 8080
