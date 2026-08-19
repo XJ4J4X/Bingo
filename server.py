@@ -64,7 +64,8 @@ game_state = {
     "lock_start_time": None,
     "verification_mode": "trust",
     "active_phrases": [],
-    "admin_ticked": []
+    "admin_ticked": [],
+    "color_choice_user_id": None
 }
 
 def init_db():
@@ -76,7 +77,8 @@ def init_db():
             pseudo TEXT UNIQUE,
             password_words TEXT,
             score INTEGER DEFAULT 0,
-            submitted_grid TEXT
+            submitted_grid TEXT,
+            color TEXT
         )
     ''')
     
@@ -89,6 +91,8 @@ def init_db():
         
     if 'submitted_grid' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN submitted_grid TEXT")
+    if 'color' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN color TEXT")
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,8 +164,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 50')
-            users = [{'pseudo': row[0], 'score': row[1]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, score, color FROM users ORDER BY score DESC LIMIT 50')
+            users = [{'pseudo': row[0], 'score': row[1], 'color': row[2]} for row in c.fetchall()]
             conn.close()
             self.wfile.write(json.dumps(users).encode('utf-8'))
             
@@ -287,7 +291,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             backup_data = {}
             c.execute('SELECT * FROM users')
             users = c.fetchall()
-            backup_data['users'] = [{'id': u[0], 'pseudo': u[1], 'score': u[3], 'submitted_grid': u[4]} for u in users]
+            backup_data['users'] = [{'id': u[0], 'pseudo': u[1], 'score': u[3], 'submitted_grid': u[4], 'color': u[5] if len(u)>5 else None} for u in users]
             c.execute('SELECT * FROM phrase_stats')
             stats = c.fetchall()
             backup_data['phrase_stats'] = [{'phrase': s[0], 'count': s[1]} for s in stats]
@@ -446,6 +450,38 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Invalid admin password'}).encode('utf-8'))
 
+
+        elif self.path == '/api/user/color':
+            user = check_user(self.headers)
+            if not user:
+                self.send_response(401)
+                self.end_headers()
+                return
+            if game_state.get('color_choice_user_id') != user['id']:
+                self.send_response(403)
+                self.end_headers()
+                return
+                
+            color = data.get('color', '').strip()
+            import re
+            if not re.match(r'^#[0-9a-fA-F]{6}$', color):
+                self.send_response(400)
+                self.end_headers()
+                return
+                
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('UPDATE users SET color = ? WHERE id = ?', (color, user['id']))
+            conn.commit()
+            conn.close()
+            
+            # Remove the right once used
+            game_state['color_choice_user_id'] = None
+            
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode())
+
         elif self.path.startswith('/api/admin/'):
             admin_data = check_admin(self.headers)
             if not admin_data:
@@ -559,6 +595,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+
+
+            elif self.path == '/api/admin/game/grant_color':
+                user_id = data.get('user_id')
+                if user_id:
+                    game_state['color_choice_user_id'] = int(user_id)
+                else:
+                    game_state['color_choice_user_id'] = None
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode())
 
             elif self.path == '/api/admin/users/reset':
                 conn = get_db_connection()

@@ -634,3 +634,24 @@ async function loadStats() {
         console.error("Erreur de chargement des stats:", err);
     }
 }
+
+window.grantColorChoice = async function(userId) {
+    if(!confirm("Voulez-vous donner l'accès à la roue de couleur à ce joueur ?")) return;
+    try {
+        const res = await fetch('/api/admin/game/grant_color', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${adminToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
+        if (res.ok) {
+            alert("Accès donné avec succès !");
+        } else {
+            alert("Erreur");
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}

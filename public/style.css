@@ -259,3 +259,23 @@ body.dark-mode #password-display {
   animation: flashRed 1s infinite;
   font-weight: bold;
 }
+
+/* Effet spécial pour Aminato */
+.aminato-effect {
+    color: #74b9ff;
+    font-weight: bold;
+    text-transform: uppercase;
+    text-shadow: 0 0 5px #74b9ff, 0 0 10px #74b9ff, 0 0 20px #0984e3;
+    animation: aminato-pulse 2s infinite alternate;
+}
+
+@keyframes aminato-pulse {
+    0% {
+        text-shadow: 0 0 5px #74b9ff, 0 0 10px #74b9ff, 0 0 20px #0984e3;
+        opacity: 0.8;
+    }
+    100% {
+        text-shadow: 0 0 10px #81ecec, 0 0 20px #81ecec, 0 0 40px #00cec9;
+        opacity: 1;
+    }
+}

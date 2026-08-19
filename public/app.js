@@ -47,6 +47,9 @@ const validateGridBtn = document.getElementById('validate-grid-btn');
 const gameMessage = document.getElementById('game-message');
 
 const leaderboardBody = document.getElementById('leaderboard-body');
+const colorPickerSection = document.getElementById('color-picker-section');
+const userColorPicker = document.getElementById('user-color-picker');
+const saveColorBtn = document.getElementById('save-color-btn');
 
 async function init() {
     loadLeaderboard();
