@@ -268,7 +268,10 @@ async function loadUsers() {
                     <button class="small-btn add-pts-btn success-btn" data-id="${u.id}">+10</button>
                     <button class="small-btn sub-pts-btn warning-btn" data-id="${u.id}">-10</button>
                 </td>
-                <td><button class="small-btn delete-btn danger-btn" data-id="${u.id}">Supprimer</button></td>
+                <td>
+                    <button class="small-btn grant-color-btn" style="background:#9b59b6; color:white; border:none; cursor:pointer;" data-id="${u.id}" title="Donner la roue de couleur">🎨</button>
+                    <button class="small-btn delete-btn danger-btn" data-id="${u.id}">Supprimer</button>
+                </td>
             `;
             usersTableBody.appendChild(tr);
         });
@@ -287,6 +290,20 @@ async function loadUsers() {
             });
         });
         
+        document.querySelectorAll('.grant-color-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (confirm("Voulez-vous donner l'accès à la roue de couleur à ce joueur ?")) {
+                    const id = e.target.getAttribute('data-id');
+                    const res = await fetchWithAuth('/api/admin/game/grant_color', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_id: id })
+                    });
+                    if (res.ok) alert("Accès donné avec succès !");
+                    else alert("Erreur");
+                }
+            });
+        });
         document.querySelectorAll('.add-pts-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.getAttribute('data-id');
@@ -550,37 +567,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- STATS LOGIC ---
+// --- TABS LOGIC ---
 const navMainBtn = document.getElementById('nav-main-btn');
 const navStatsBtn = document.getElementById('nav-stats-btn');
+const navAccountsBtn = document.getElementById('nav-accounts-btn');
 const mainAdminPanel = document.getElementById('main-admin-panel');
 const statsSection = document.getElementById('stats-section');
+const accountsSection = document.getElementById('accounts-section');
 const statsUsersContainer = document.getElementById('stats-users-container');
 const statsPhrasesContainer = document.getElementById('stats-phrases-container');
 
+function resetNavBtns() {
+    navMainBtn.style.backgroundColor = '#3498db';
+    navMainBtn.style.color = 'white';
+    navMainBtn.className = '';
+    
+    navStatsBtn.style.backgroundColor = '#3498db';
+    navStatsBtn.style.color = 'white';
+    navStatsBtn.className = '';
+    
+    if (navAccountsBtn) {
+        navAccountsBtn.style.backgroundColor = '#3498db';
+        navAccountsBtn.style.color = 'white';
+        navAccountsBtn.className = '';
+    }
+    
+    mainAdminPanel.style.display = 'none';
+    statsSection.style.display = 'none';
+    if (accountsSection) accountsSection.style.display = 'none';
+}
+
 if (navMainBtn && navStatsBtn) {
     navMainBtn.addEventListener('click', function() {
+        resetNavBtns();
         mainAdminPanel.style.display = 'block';
-        statsSection.style.display = 'none';
         navMainBtn.className = 'success-btn';
-        navStatsBtn.className = '';
-        navStatsBtn.style.backgroundColor = '#3498db';
-        navStatsBtn.style.color = 'white';
         navMainBtn.style.backgroundColor = '';
         navMainBtn.style.color = '';
     });
     
     navStatsBtn.addEventListener('click', function() {
-        mainAdminPanel.style.display = 'none';
+        resetNavBtns();
         statsSection.style.display = 'block';
         navStatsBtn.className = 'success-btn';
-        navMainBtn.className = '';
-        navMainBtn.style.backgroundColor = '#ccc';
-        navMainBtn.style.color = '#333';
         navStatsBtn.style.backgroundColor = '';
         navStatsBtn.style.color = '';
         loadStats();
     });
+    
+    if (navAccountsBtn) {
+        navAccountsBtn.addEventListener('click', function() {
+            resetNavBtns();
+            if (accountsSection) accountsSection.style.display = 'block';
+            navAccountsBtn.className = 'success-btn';
+            navAccountsBtn.style.backgroundColor = '';
+            navAccountsBtn.style.color = '';
+        });
+    }
 }
 
 async function loadStats() {
