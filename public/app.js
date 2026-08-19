@@ -259,6 +259,29 @@ function startStateSync() {
     stateInterval = setInterval(syncState, 1000);
 }
 
+saveColorBtn.addEventListener('click', async () => {
+    const color = userColorPicker.value;
+    try {
+        const res = await fetch('/api/user/color', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser ? currentUser.password_words : ''}`
+            },
+            body: JSON.stringify({ color })
+        });
+        if (res.ok) {
+            alert("Couleur sauvegardée avec succès !");
+            colorPickerSection.classList.add('hidden');
+            loadLeaderboard();
+        } else {
+            alert("Erreur lors de la sauvegarde de la couleur.");
+        }
+    } catch (e) {
+        console.error(e);
+    }
+});
+
 async function syncState() {
     try {
         const res = await fetch('/api/game/state');
@@ -340,6 +363,14 @@ async function syncState() {
         
         window.wasGameActive = isGameActive;
         loadLeaderboard();
+        
+        // Show color picker if user is the winner
+        if (currentUser && data.color_choice_user_id === currentUser.id) {
+            colorPickerSection.classList.remove('hidden');
+        } else if (colorPickerSection && !colorPickerSection.classList.contains('hidden')) {
+            colorPickerSection.classList.add('hidden');
+        }
+        
     } catch (err) {
         console.error("Erreur sync game state", err);
     }
@@ -419,10 +450,26 @@ async function loadLeaderboard() {
         
         data.forEach((user, index) => {
             const tr = document.createElement('tr');
-            const pseudoHtml = user.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            
+            let pseudoDisplay = user.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            let pseudoClass = '';
+            let pseudoStyle = '';
+            
+            if (user.pseudo.toLowerCase() === 'aminat0_') {
+                pseudoClass = 'aminato-effect';
+            } else if (user.color) {
+                pseudoStyle = `color: ${user.color}; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);`;
+            } else if (currentUser && user.pseudo === currentUser.pseudo) {
+                pseudoStyle = 'font-weight: bold;';
+            }
+            
+            if (currentUser && user.pseudo === currentUser.pseudo) {
+                tr.style.backgroundColor = 'var(--bg-tertiary)';
+            }
+            
             tr.innerHTML = `
                 <td>#${index + 1}</td>
-                <td>${pseudoHtml}</td>
+                <td class="${pseudoClass}" style="${pseudoStyle}">${pseudoDisplay}</td>
                 <td>${user.score} pts</td>
             `;
             leaderboardBody.appendChild(tr);
