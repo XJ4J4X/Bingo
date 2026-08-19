@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin - Aminato Bingo</title>
     <link rel="icon" type="image/jpeg" href="favicon.jpg">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=25">
     
     <style>
         .admin-section {
@@ -94,31 +94,6 @@
             </div>
 
             <div class="admin-controls">
-                <h3>Gestion des Utilisateurs</h3>
-                <div class="flex-row" style="margin-bottom: 10px;">
-                    <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
-                    
-                    <input type="text" id="new-user-pseudo" placeholder="Pseudo du nouveau joueur">
-                    <button id="create-user-btn">Créer le joueur</button>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Pseudo</th>
-                            <th>Mots de passe</th>
-                            <th>Score</th>
-                            <th>Points (+/-)</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table-body">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="admin-controls">
                 <h3>Gestion des Phrases Bingo</h3>
                 <div class="flex-row" style="margin-bottom: 10px;">
                     <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase..." style="flex:1;">
@@ -166,6 +141,31 @@
             </div> <!-- End main-admin-panel -->
             
             <div id="accounts-section" style="display: none;">
+            <div class="admin-controls">
+                <h3>Gestion des Utilisateurs</h3>
+                <div class="flex-row" style="margin-bottom: 10px;">
+                    <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
+                    
+                    <input type="text" id="new-user-pseudo" placeholder="Pseudo du nouveau joueur">
+                    <button id="create-user-btn">Créer le joueur</button>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Pseudo</th>
+                            <th>Mots de passe</th>
+                            <th>Score</th>
+                            <th>Points (+/-)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                    </tbody>
+                </table>
+            </div>
+
             <div class="admin-controls" id="superadmin-section">
                 <h3>Gestion de l'Équipe & Sauvegardes (Superadmin uniquement)</h3>
                 
@@ -221,9 +221,9 @@
     </main>
 
     <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: #7f8c8d; font-size: 0.9rem;">
-        v1.0.0.24
+        v1.0.0.25
     </footer>
 
-    <script src="admin.js"></script>
+    <script src="admin.js?v=25"></script>
 </body>
 </html>

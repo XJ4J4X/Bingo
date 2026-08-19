@@ -365,7 +365,7 @@ async function syncState() {
         loadLeaderboard();
         
         // Show color picker if user is the winner
-        if (currentUser && data.color_choice_user_id === currentUser.id) {
+        if (currentUser && data.color_choice_user_pseudo === currentUser) {
             colorPickerSection.classList.remove('hidden');
         } else if (colorPickerSection && !colorPickerSection.classList.contains('hidden')) {
             colorPickerSection.classList.add('hidden');

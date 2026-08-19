@@ -65,7 +65,7 @@ game_state = {
     "verification_mode": "trust",
     "active_phrases": [],
     "admin_ticked": [],
-    "color_choice_user_id": None
+    "color_choice_user_pseudo": None
 }
 
 def init_db():
@@ -233,7 +233,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "is_active": game_state["is_active"],
                 "is_locked": game_state.get("is_locked", False),
                 "time_left": time_left,
-                "verification_mode": game_state.get("verification_mode", "auto")
+                "verification_mode": game_state.get("verification_mode", "auto"),
+                "color_choice_user_pseudo": game_state.get("color_choice_user_pseudo")
             }).encode('utf-8'))
 
         elif self.path == '/api/admin/users':
@@ -457,7 +458,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(401)
                 self.end_headers()
                 return
-            if game_state.get('color_choice_user_id') != user['id']:
+            if game_state.get('color_choice_user_pseudo') != user['pseudo']:
                 self.send_response(403)
                 self.end_headers()
                 return
@@ -476,7 +477,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn.close()
             
             # Remove the right once used
-            game_state['color_choice_user_id'] = None
+            game_state['color_choice_user_pseudo'] = None
             
             self.send_response(200)
             self.end_headers()
@@ -600,9 +601,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif self.path == '/api/admin/game/grant_color':
                 user_id = data.get('user_id')
                 if user_id:
-                    game_state['color_choice_user_id'] = int(user_id)
+                    conn = get_db_connection()
+                    c = conn.cursor()
+                    c.execute("SELECT pseudo FROM users WHERE id = ?", (user_id,))
+                    user = c.fetchone()
+                    conn.close()
+                    if user:
+                        game_state['color_choice_user_pseudo'] = user[0]
+                    else:
+                        game_state['color_choice_user_pseudo'] = None
                 else:
-                    game_state['color_choice_user_id'] = None
+                    game_state['color_choice_user_pseudo'] = None
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode())
