@@ -453,12 +453,25 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
         elif self.path == '/api/user/color':
-            user = check_user(self.headers)
+            pseudo = data.get('pseudo', '').strip()
+            password = data.get('password', '').strip()
+            if not pseudo or not password:
+                self.send_response(401)
+                self.end_headers()
+                return
+                
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('SELECT id, pseudo FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            user = c.fetchone()
+            conn.close()
+            
             if not user:
                 self.send_response(401)
                 self.end_headers()
                 return
-            if game_state.get('color_choice_user_pseudo') != user['pseudo']:
+                
+            if game_state.get('color_choice_user_pseudo') != user[1]:
                 self.send_response(403)
                 self.end_headers()
                 return
@@ -472,7 +485,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('UPDATE users SET color = ? WHERE id = ?', (color, user['id']))
+            c.execute('UPDATE users SET color = ? WHERE id = ?', (color, user[0]))
             conn.commit()
             conn.close()
             

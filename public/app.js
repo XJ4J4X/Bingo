@@ -265,10 +265,13 @@ saveColorBtn.addEventListener('click', async () => {
         const res = await fetch('/api/user/color', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${currentUser ? currentUser.password_words : ''}`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ color })
+            body: JSON.stringify({ 
+                color: color,
+                pseudo: currentUser,
+                password: currentPassword
+            })
         });
         if (res.ok) {
             alert("Couleur sauvegardée avec succès !");
