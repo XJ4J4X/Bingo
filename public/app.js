@@ -213,6 +213,9 @@ function startGame() {
     authSection.classList.add('hidden');
     gameSection.classList.remove('hidden');
     userInfo.classList.remove('hidden');
+    if (document.getElementById('main-nav')) {
+        document.getElementById('main-nav').classList.remove('hidden');
+    }
     currentPseudoSpan.textContent = currentUser;
     
     hasSubmittedScore = false;
@@ -575,3 +578,117 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Navigation Logic
+const mainNav = document.getElementById('main-nav');
+const navGameBtn = document.getElementById('nav-game-btn');
+const navStatsBtn = document.getElementById('nav-stats-btn');
+const navPlayersBtn = document.getElementById('nav-players-btn');
+const statsSection = document.getElementById('stats-section');
+const playersSection = document.getElementById('players-section');
+
+if (navGameBtn) {
+    navGameBtn.addEventListener('click', () => {
+        gameSection.classList.remove('hidden');
+        if(statsSection) statsSection.classList.add('hidden');
+        if(playersSection) playersSection.classList.add('hidden');
+        
+        navGameBtn.classList.add('active');
+        navGameBtn.style.background = '#3498db';
+        navGameBtn.style.color = 'white';
+        
+        if(navStatsBtn) {
+            navStatsBtn.classList.remove('active');
+            navStatsBtn.style.background = 'rgba(255,255,255,0.1)';
+            navStatsBtn.style.color = 'var(--text-color)';
+        }
+        if(navPlayersBtn) {
+            navPlayersBtn.classList.remove('active');
+            navPlayersBtn.style.background = 'rgba(255,255,255,0.1)';
+            navPlayersBtn.style.color = 'var(--text-color)';
+        }
+    });
+}
+
+if (navStatsBtn) {
+    navStatsBtn.addEventListener('click', () => {
+        gameSection.classList.add('hidden');
+        if(playersSection) playersSection.classList.add('hidden');
+        if(statsSection) statsSection.classList.remove('hidden');
+        
+        navStatsBtn.classList.add('active');
+        navStatsBtn.style.background = '#3498db';
+        navStatsBtn.style.color = 'white';
+        
+        if(navGameBtn) {
+            navGameBtn.classList.remove('active');
+            navGameBtn.style.background = 'rgba(255,255,255,0.1)';
+            navGameBtn.style.color = 'var(--text-color)';
+        }
+        if(navPlayersBtn) {
+            navPlayersBtn.classList.remove('active');
+            navPlayersBtn.style.background = 'rgba(255,255,255,0.1)';
+            navPlayersBtn.style.color = 'var(--text-color)';
+        }
+        loadUserStats();
+    });
+}
+
+if (navPlayersBtn) {
+    navPlayersBtn.addEventListener('click', () => {
+        gameSection.classList.add('hidden');
+        if(statsSection) statsSection.classList.add('hidden');
+        if(playersSection) playersSection.classList.remove('hidden');
+        
+        navPlayersBtn.classList.add('active');
+        navPlayersBtn.style.background = '#3498db';
+        navPlayersBtn.style.color = 'white';
+        
+        if(navGameBtn) {
+            navGameBtn.classList.remove('active');
+            navGameBtn.style.background = 'rgba(255,255,255,0.1)';
+            navGameBtn.style.color = 'var(--text-color)';
+        }
+        if(navStatsBtn) {
+            navStatsBtn.classList.remove('active');
+            navStatsBtn.style.background = 'rgba(255,255,255,0.1)';
+            navStatsBtn.style.color = 'var(--text-color)';
+        }
+        loadAllPlayers();
+    });
+}
+
+async function loadAllPlayers() {
+    try {
+        const res = await fetch('/api/users/all?t=' + Date.now());
+        if (!res.ok) return;
+        const users = await res.json();
+        const container = document.getElementById('all-players-list');
+        if(!container) return;
+        container.innerHTML = '';
+        
+        if(users.length === 0) {
+            container.innerHTML = '<p>Aucun compte créé pour le moment.</p>';
+            return;
+        }
+        
+        users.forEach(u => {
+            const div = document.createElement('div');
+            div.style = "background: var(--bg-secondary); padding: 10px 15px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1);";
+            
+            let pseudoDisplay = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            if (u.pseudo.toLowerCase() === 'aminat0_') {
+                div.classList.add('aminato-effect');
+            }
+            if (u.color) {
+                div.style.color = u.color;
+                div.style.textShadow = "1px 1px 2px rgba(0,0,0,0.3)";
+            }
+            
+            div.innerHTML = pseudoDisplay;
+            container.appendChild(div);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}

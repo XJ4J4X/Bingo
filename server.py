@@ -170,6 +170,21 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory="public", **kwargs)
 
     def do_GET(self):
+        if self.path == '/api/users/all':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            conn = get_db_connection()
+            c = conn.cursor()
+            if IS_POSTGRES:
+                c.execute('SELECT pseudo, color FROM users ORDER BY LOWER(pseudo) ASC')
+            else:
+                c.execute('SELECT pseudo, color FROM users ORDER BY pseudo COLLATE NOCASE ASC')
+            all_users = [{'pseudo': row[0], 'color': row[1]} for row in c.fetchall()]
+            conn.close()
+            self.wfile.write(json.dumps(all_users).encode('utf-8'))
+            return
+            
         if self.path == '/api/leaderboard':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
