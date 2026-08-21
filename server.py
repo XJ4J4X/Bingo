@@ -170,7 +170,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory="public", **kwargs)
 
     def do_GET(self):
-        if self.path == '/api/users/all':
+        url_path = self.path.split('?')[0]
+        if url_path == '/api/users/all':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -185,7 +186,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(all_users).encode('utf-8'))
             return
             
-        if self.path == '/api/leaderboard':
+        if url_path == '/api/leaderboard':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -200,7 +201,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins}).encode('utf-8'))
             
-        elif self.path == '/api/user_stats':
+        elif url_path == '/api/user_stats':
             pseudo = self.headers.get('pseudo', '').strip()
             password = self.headers.get('password', '').strip()
             if not pseudo or not password:
@@ -230,7 +231,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_error(401)
             
-        elif self.path == '/api/phrases':
+        elif url_path == '/api/phrases':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -246,7 +247,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
             self.wfile.write(json.dumps(phrases_to_send).encode('utf-8'))
 
-        elif self.path == '/api/user_score':
+        elif url_path == '/api/user_score':
             pseudo = self.headers.get('pseudo', '').strip()
             password = self.headers.get('password', '').strip()
             if not pseudo or not password:
@@ -265,7 +266,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_error(401)
         
-        elif self.path == '/api/game/state':
+        elif url_path == '/api/game/state':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -298,7 +299,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "color_choice_user_pseudo": game_state.get("color_choice_user_pseudo")
             }).encode('utf-8'))
 
-        elif self.path == '/api/admin/users':
+        elif url_path == '/api/admin/users':
             admin_data = check_admin(self.headers)
             if not admin_data:
                 self.send_error(401, "Unauthorized")
@@ -314,7 +315,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn.close()
             self.wfile.write(json.dumps(users).encode('utf-8'))
 
-        elif self.path == '/api/admin/profiles':
+        elif url_path == '/api/admin/profiles':
             conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT id, name, phrases_text FROM profiles')
@@ -325,7 +326,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(profiles).encode('utf-8'))
             
-        elif self.path == '/api/admin/game/live_data':
+        elif url_path == '/api/admin/game/live_data':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -334,13 +335,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'admin_ticked': game_state["admin_ticked"]
             }).encode('utf-8'))
             
-        elif self.path == '/ping':
+        elif url_path == '/ping':
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b'pong')
 
-        elif self.path == '/api/admin/backup':
+        elif url_path == '/api/admin/backup':
             admin = check_admin(self.headers)
             if not admin or admin['role'] != 'superadmin':
                 self.send_response(401)
@@ -391,6 +392,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        url_path = self.path.split('?')[0]
         content_length = int(self.headers.get('Content-Length', 0))
         post_data = self.rfile.read(content_length)
         
@@ -401,7 +403,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
 
-        if self.path == '/api/register':
+        if url_path == '/api/register':
             pseudo = data.get('pseudo', '').strip()
             if not pseudo:
                 self.send_error(400, "Bad Request")
@@ -426,7 +428,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             finally:
                 conn.close()
 
-        elif self.path == '/api/login':
+        elif url_path == '/api/login':
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
             
@@ -446,7 +448,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Invalid credentials'}).encode('utf-8'))
 
-        elif self.path == '/api/score':
+        elif url_path == '/api/score':
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
             checked_phrases = data.get('checked_phrases', [])
@@ -498,7 +500,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Invalid credentials'}).encode('utf-8'))
 
-        elif self.path == '/api/admin/login':
+        elif url_path == '/api/admin/login':
             password = data.get('password')
             
             conn = get_db_connection()
@@ -518,7 +520,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Invalid admin password'}).encode('utf-8'))
 
 
-        elif self.path == '/api/user/color':
+        elif url_path == '/api/user/color':
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
             if not pseudo or not password:
@@ -562,7 +564,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': True}).encode())
 
-        elif self.path.startswith('/api/admin/'):
+        elif url_path.startswith('/api/admin/'):
             admin_data = check_admin(self.headers)
             if not admin_data:
                 self.send_response(401)
@@ -570,7 +572,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode('utf-8'))
                 return
 
-            if self.path == '/api/admin/game/start':
+            if url_path == '/api/admin/game/start':
                 game_state["is_active"] = True
                 game_state["is_locked"] = False
                 game_state["start_time"] = time.time()
@@ -605,7 +607,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
-            elif self.path == '/api/admin/game/stop':
+            elif url_path == '/api/admin/game/stop':
                 game_state["is_active"] = False
                 game_state["is_locked"] = False
                 game_state["start_time"] = None
@@ -650,7 +652,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/stats':
+            elif url_path == '/api/admin/stats':
                 conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 10')
@@ -666,7 +668,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 res = {"users": [{"pseudo": u[0], "score": u[1]} for u in usrs], "phrases": [{"phrase": p[0], "count": p[1]} for p in phrs]}
                 self.wfile.write(json.dumps(res).encode('utf-8'))
                 
-            elif self.path == '/api/admin/users/delete':
+            elif url_path == '/api/admin/users/delete':
                 user_id = data.get('id')
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -679,7 +681,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
 
-            elif self.path == '/api/admin/game/grant_color':
+            elif url_path == '/api/admin/game/grant_color':
                 user_id = data.get('user_id')
                 if user_id:
                     conn = get_db_connection()
@@ -699,7 +701,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode())
 
-            elif self.path == '/api/admin/users/reset':
+            elif url_path == '/api/admin/users/reset':
                 conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('UPDATE users SET score = 0')
@@ -710,7 +712,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/users/points':
+            elif url_path == '/api/admin/users/points':
                 user_id = data.get('id')
                 points_to_add = data.get('points')
                 
@@ -732,7 +734,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/create':
+            elif url_path == '/api/admin/create':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
                     self.end_headers()
@@ -755,7 +757,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
-            elif self.path == '/api/admin/list_admins':
+            elif url_path == '/api/admin/list_admins':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
                     self.end_headers()
@@ -773,7 +775,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(admins_list).encode('utf-8'))
 
-            elif self.path == '/api/admin/delete_admin':
+            elif url_path == '/api/admin/delete_admin':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
                     self.end_headers()
@@ -793,7 +795,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
-            elif self.path == '/api/admin/phrases/add':
+            elif url_path == '/api/admin/phrases/add':
                 phrase = data.get('phrase', '').strip()
                 if phrase:
                     conn = get_db_connection()
@@ -809,7 +811,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/phrases/delete':
+            elif url_path == '/api/admin/phrases/delete':
                 phrase_id = data.get('id')
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -821,7 +823,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/profiles/add':
+            elif url_path == '/api/admin/profiles/add':
                 name = data.get('name', '').strip()
                 phrases_text = data.get('phrases_text', '').strip()
                 if name and phrases_text:
@@ -838,7 +840,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
-            elif self.path == '/api/admin/profiles/delete':
+            elif url_path == '/api/admin/profiles/delete':
                 profile_id = data.get('id')
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -850,7 +852,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
-            elif self.path == '/api/admin/game/tick':
+            elif url_path == '/api/admin/game/tick':
                 phrase = data.get('phrase', '')
                 is_checked = data.get('checked', False)
                 if is_checked:

@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-function startGame() {
+async function startGame() {
     authSection.classList.add('hidden');
     gameSection.classList.remove('hidden');
     userInfo.classList.remove('hidden');
@@ -222,6 +222,9 @@ function startGame() {
     gameMessage.textContent = "";
     validateGridBtn.disabled = true;
     
+    if (BINGO_PHRASES.length === 0) {
+        await fetchPhrases();
+    }
     generateGrid();
     startStateSync();
 }
@@ -296,11 +299,11 @@ async function syncState() {
         isGameActive = data.is_active;
         timeLeft = data.time_left;
         
-        if (window.wasGameActive === false && isGameActive === true) {
-            // Un nouveau live vient de démarrer !
+        if (!window.gridGenerated || (window.wasGameActive === false && isGameActive === true)) {
             hasSubmittedScore = false;
             await fetchPhrases();
             generateGrid();
+            window.gridGenerated = true;
         }
         
         if (isGameActive) {
@@ -472,7 +475,12 @@ document.getElementById('btn-top-wins')?.addEventListener('click', () => {
 async function loadLeaderboard() {
     try {
         const res = await fetch('/api/leaderboard?t=' + Date.now());
-        leaderboardData = await res.json();
+        const data = await res.json();
+        if (Array.isArray(data)) {
+            leaderboardData = { top_score: data, top_wins: [] };
+        } else {
+            leaderboardData = data || { top_score: [], top_wins: [] };
+        }
         renderLeaderboard();
     } catch (err) {
         console.error("Erreur classement:", err);
