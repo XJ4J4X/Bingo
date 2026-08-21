@@ -53,6 +53,12 @@
             </div>
         </section>
 
+        <nav id="main-nav" class="hidden" style="margin-bottom: 20px; display: flex; gap: 10px;">
+            <button id="nav-game-btn" class="nav-btn active" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: #3498db; color: white;">Jeu</button>
+            <button id="nav-stats-btn" class="nav-btn" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color);">Statistiques</button>
+            <button id="nav-players-btn" class="nav-btn" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color);">Joueurs Inscrits</button>
+        </nav>
+
         <section id="game-section" class="hidden">
             
             <div class="game-header">
@@ -88,6 +94,14 @@
             </div>
         </section>
 
+        <section id="players-section" class="hidden">
+            <h2>Joueurs Inscrits</h2>
+            <p style="text-align: center; color: var(--text-muted);">Voici la liste de tous les joueurs inscrits au bingo :</p>
+            <div id="all-players-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; margin-bottom: 40px;">
+                <!-- Les joueurs seront injectés ici -->
+            </div>
+        </section>
+
         <section id="leaderboard-section">
             <h2>Classement</h2>
             <div class="leaderboard-tabs">
@@ -111,6 +125,15 @@
             <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
                 <input type="color" id="user-color-picker" value="#e74c3c" style="width: 50px; height: 50px; border: none; border-radius: 4px; cursor: pointer;">
                 <button id="save-color-btn" style="padding: 10px 20px; cursor: pointer; background: #2ecc71; color: white; border: none; border-radius: 4px; font-weight: bold;">Sauvegarder ma couleur</button>
+            </div>
+        </section>
+
+    
+        <section id="players-section" class="hidden">
+            <h2>Comptes Créés</h2>
+            <p style="text-align: center; color: var(--text-muted);">Voici la liste de tous les joueurs inscrits au bingo :</p>
+            <div id="all-players-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px;">
+                <!-- Les joueurs seront injectés ici -->
             </div>
         </section>
 
