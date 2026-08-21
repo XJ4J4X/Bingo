@@ -1,9 +1,0 @@
-127.0.0.1 - - [21/Aug/2026 21:24:59] "HEAD / HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:25:29] "GET /api/leaderboard HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:25:35] code 401, message Unauthorized
-127.0.0.1 - - [21/Aug/2026 21:25:35] "GET /api/user_stats HTTP/1.1" 401 -
-127.0.0.1 - - [21/Aug/2026 21:25:56] "GET /api/game/state HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:26:03] "GET /app.js HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:26:10] "POST /api/register HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:26:16] "GET /api/user_stats HTTP/1.1" 200 -
-127.0.0.1 - - [21/Aug/2026 21:26:35] "GET /admin.html HTTP/1.1" 200 -
