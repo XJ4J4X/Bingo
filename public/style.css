@@ -279,3 +279,82 @@ body.dark-mode #password-display {
         opacity: 1;
     }
 }
+
+/* Statistiques & Leaderboard Tabs */
+.stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 250px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 15px 20px;
+    color: var(--text-color);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.stat-card p {
+    margin: 8px 0;
+    font-size: 0.95rem;
+}
+
+.progress-bar-container {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    height: 10px;
+    width: 100%;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    border-radius: 8px;
+    transition: width 0.5s ease-in-out;
+}
+
+.leaderboard-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.leaderboard-tabs button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--text-color);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.leaderboard-tabs button.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.leaderboard-tabs button:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.2);
+}

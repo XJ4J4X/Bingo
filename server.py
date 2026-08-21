@@ -78,7 +78,11 @@ def init_db():
             password_words TEXT,
             score INTEGER DEFAULT 0,
             submitted_grid TEXT,
-            color TEXT
+            color TEXT,
+            wins INTEGER DEFAULT 0,
+            lives_participated INTEGER DEFAULT 0,
+            boxes_checked INTEGER DEFAULT 0,
+            boxes_correct INTEGER DEFAULT 0
         )
     ''')
     
@@ -93,6 +97,14 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN submitted_grid TEXT")
     if 'color' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN color TEXT")
+    if 'wins' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN wins INTEGER DEFAULT 0")
+    if 'lives_participated' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN lives_participated INTEGER DEFAULT 0")
+    if 'boxes_checked' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN boxes_checked INTEGER DEFAULT 0")
+    if 'boxes_correct' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN boxes_correct INTEGER DEFAULT 0")
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,9 +177,43 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn = get_db_connection()
             c = conn.cursor()
             c.execute('SELECT pseudo, score, color FROM users ORDER BY score DESC LIMIT 50')
-            users = [{'pseudo': row[0], 'score': row[1], 'color': row[2]} for row in c.fetchall()]
+            top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2]} for row in c.fetchall()]
+            
+            c.execute('SELECT pseudo, wins, color FROM users ORDER BY wins DESC LIMIT 50')
+            top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2]} for row in c.fetchall()]
             conn.close()
-            self.wfile.write(json.dumps(users).encode('utf-8'))
+            
+            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins}).encode('utf-8'))
+            
+        elif self.path == '/api/user_stats':
+            pseudo = self.headers.get('pseudo', '').strip()
+            password = self.headers.get('password', '').strip()
+            if not pseudo or not password:
+                self.send_error(401)
+                return
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            user = c.fetchone()
+            
+            c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 5')
+            phrs = [{"phrase": p[0], "count": p[1]} for p in c.fetchall()]
+            conn.close()
+            
+            if user:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'score': user[0],
+                    'wins': user[1],
+                    'lives_participated': user[2],
+                    'boxes_checked': user[3],
+                    'boxes_correct': user[4],
+                    'top_phrases': phrs
+                }).encode('utf-8'))
+            else:
+                self.send_error(401)
             
         elif self.path == '/api/phrases':
             self.send_response(200)
@@ -401,7 +447,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             if user:
                 if game_state["is_active"] and game_state["verification_mode"] == "strict":
-                    c.execute('UPDATE users SET submitted_grid = ? WHERE id = ?', (json.dumps(checked_phrases), user[0]))
+                    boxes_checked = len(checked_phrases)
+                    c.execute('UPDATE users SET submitted_grid = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ? WHERE id = ?', (json.dumps(checked_phrases), boxes_checked, user[0]))
                     conn.commit()
                     conn.close()
                     self.send_response(200)
@@ -410,16 +457,20 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.wfile.write(json.dumps({'success': True, 'pending': True}).encode('utf-8'))
                     return
 
+                boxes_checked = len(checked_phrases)
+                boxes_correct = 0
                 score_to_add = 0
                 if game_state["verification_mode"] == "strict":
                     for phrase in checked_phrases:
                         if phrase in game_state["admin_ticked"]:
                             score_to_add += 10
+                            boxes_correct += 1
                 else:
                     score_to_add = len(checked_phrases) * 10
+                    boxes_correct = len(checked_phrases)
                     
                 new_score = user[1] + score_to_add
-                c.execute('UPDATE users SET score = ? WHERE id = ?', (new_score, user[0]))
+                c.execute('UPDATE users SET score = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ?, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, boxes_checked, boxes_correct, user[0]))
                 conn.commit()
                 conn.close()
                 self.send_response(200)
@@ -567,11 +618,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         checked_phrases = json.loads(submitted_grid_json)
                         score_to_add = 0
+                        boxes_correct = 0
                         for phrase in checked_phrases:
                             if phrase in game_state["admin_ticked"]:
                                 score_to_add += 10
+                                boxes_correct += 1
                         new_score = current_score + score_to_add
-                        c.execute('UPDATE users SET score = ?, submitted_grid = NULL WHERE id = ?', (new_score, user_id))
+                        c.execute('UPDATE users SET score = ?, submitted_grid = NULL, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, boxes_correct, user_id))
                     except:
                         c.execute('UPDATE users SET submitted_grid = NULL WHERE id = ?', (user_id,))
                 conn.commit()
@@ -618,11 +671,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     c = conn.cursor()
                     c.execute("SELECT pseudo FROM users WHERE id = ?", (user_id,))
                     user = c.fetchone()
-                    conn.close()
                     if user:
                         game_state['color_choice_user_pseudo'] = user[0]
+                        c.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', (user_id,))
+                        conn.commit()
                     else:
                         game_state['color_choice_user_pseudo'] = None
+                    conn.close()
                 else:
                     game_state['color_choice_user_pseudo'] = None
                 self.send_response(200)
