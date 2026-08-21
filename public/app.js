@@ -296,6 +296,13 @@ async function syncState() {
         isGameActive = data.is_active;
         timeLeft = data.time_left;
         
+        if (window.wasGameActive === false && isGameActive === true) {
+            // Un nouveau live vient de démarrer !
+            hasSubmittedScore = false;
+            await loadPhrases();
+            generateGrid();
+        }
+        
         if (isGameActive) {
             timerDisplay.textContent = formatTime(timeLeft);
             
