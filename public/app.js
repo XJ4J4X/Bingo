@@ -531,7 +531,6 @@ async function loadUserStats() {
         });
         if (res.ok) {
             const data = await res.json();
-            document.getElementById('stats-section').classList.remove('hidden');
             
             document.getElementById('my-score').textContent = data.score || 0;
             document.getElementById('my-wins').textContent = data.wins || 0;
