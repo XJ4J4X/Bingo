@@ -299,7 +299,7 @@ async function syncState() {
         if (window.wasGameActive === false && isGameActive === true) {
             // Un nouveau live vient de démarrer !
             hasSubmittedScore = false;
-            await loadPhrases();
+            await fetchPhrases();
             generateGrid();
         }
         
