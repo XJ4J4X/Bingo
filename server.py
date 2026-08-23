@@ -175,7 +175,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         url_path = self.path.split('?')[0]
         
-        if url_path == '/roue':
+        if url_path == '/roue' or url_path == '/roue/':
             self.path = '/roue.html'
             return super().do_GET()
             
