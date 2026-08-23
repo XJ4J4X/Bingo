@@ -5,43 +5,43 @@
 #roue-container {
     display: flex;
     min-height: 100vh;
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: #0f172a;
+    color: #f8fafc;
     font-family: 'Inter', sans-serif;
     transition: background-color 0.3s ease;
+    width: 100vw;
+    overflow: hidden;
 }
 
 /* Green Screen Mode */
 body.green-screen #roue-container {
     background: #00ff00 !important;
 }
-body.green-screen #roue-sidebar {
-    opacity: 0.1; /* Hide sidebar mostly but keep it clickable for streamer */
-    pointer-events: none; /* Actually, we might want it clickable if they hover */
-}
-body.green-screen #roue-sidebar:hover {
-    opacity: 1;
-    pointer-events: all;
-}
 
 /* Sidebar */
 #roue-sidebar {
     width: 350px;
     padding: 2rem;
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid #334155;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
-    transition: opacity 0.3s ease;
+    transition: transform 0.3s ease;
     z-index: 10;
+}
+
+#roue-sidebar.hidden {
+    transform: translateX(-100%);
+    position: absolute;
+    height: 100%;
 }
 
 #roue-sidebar h2 {
     margin-top: 0;
     font-size: 1.5rem;
-    color: var(--accent-primary);
+    color: #6366f1;
 }
 
 .control-group {
@@ -53,14 +53,14 @@ body.green-screen #roue-sidebar:hover {
 .control-group label {
     font-weight: 500;
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: #cbd5e1;
 }
 
 #phrases-input {
     width: 100%;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f8fafc;
     padding: 0.75rem;
     border-radius: 8px;
     resize: vertical;
@@ -70,7 +70,7 @@ body.green-screen #roue-sidebar:hover {
 
 #phrases-input:focus {
     outline: none;
-    border-color: var(--accent-primary);
+    border-color: #6366f1;
 }
 
 .toggle-group {
@@ -79,19 +79,37 @@ body.green-screen #roue-sidebar:hover {
     justify-content: space-between;
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid #334155;
 }
 
 .back-link {
     margin-top: auto;
-    color: var(--text-secondary);
+    color: #cbd5e1;
     text-decoration: none;
     font-size: 0.9rem;
     transition: color 0.2s;
 }
 
 .back-link:hover {
-    color: var(--accent-primary);
+    color: #6366f1;
+}
+
+/* Toggle Menu Button */
+#btn-toggle-menu {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 20;
+    background: #1e293b;
+    color: white;
+    border: 1px solid #334155;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#btn-toggle-menu:hover {
+    background: #334155;
 }
 
 /* Main Area */
@@ -130,7 +148,7 @@ body.green-screen #roue-sidebar:hover {
     height: 0;
     border-left: 20px solid transparent;
     border-right: 20px solid transparent;
-    border-top: 40px solid var(--accent-primary);
+    border-top: 40px solid #ef4444; /* Changed to red for visibility */
     z-index: 5;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
@@ -144,7 +162,7 @@ body.green-screen #roue-sidebar:hover {
     background: rgba(15, 23, 42, 0.95);
     padding: 3rem;
     border-radius: 20px;
-    border: 2px solid var(--accent-primary);
+    border: 2px solid #6366f1;
     text-align: center;
     z-index: 20;
     box-shadow: 0 0 50px rgba(99, 102, 241, 0.5);
@@ -161,7 +179,7 @@ body.green-screen #roue-sidebar:hover {
 }
 
 .winner-title {
-    color: var(--accent-secondary);
+    color: #ec4899;
     font-size: 1.5rem;
     margin-bottom: 1rem;
     text-transform: uppercase;
@@ -171,7 +189,7 @@ body.green-screen #roue-sidebar:hover {
 .winner-text {
     font-size: 3rem;
     font-weight: 800;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    background: linear-gradient(135deg, #6366f1, #ec4899);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin-bottom: 2rem;

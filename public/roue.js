@@ -49,6 +49,12 @@ function init() {
             document.body.classList.remove('green-screen');
         }
     });
+    
+    const btnToggleMenu = document.getElementById('btn-toggle-menu');
+    const sidebar = document.getElementById('roue-sidebar');
+    btnToggleMenu.addEventListener('click', () => {
+        sidebar.classList.toggle('hidden');
+    });
 }
 
 function parsePhrases() {
