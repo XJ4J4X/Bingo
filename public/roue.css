@@ -17,6 +17,32 @@
 body.green-screen #roue-container {
     background: #00ff00 !important;
 }
+body.green-screen .wheel-wrapper {
+    filter: none !important;
+}
+body.green-screen .wheel-pointer {
+    filter: none !important;
+}
+body.green-screen #winner-overlay {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+body.green-screen .winner-text {
+    background: none !important;
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 4px 10px rgba(0,0,0,0.8) !important;
+}
+body.green-screen #roue-sidebar {
+    opacity: 0.1;
+    pointer-events: none;
+}
+body.green-screen #roue-sidebar:hover {
+    opacity: 1;
+    pointer-events: all;
+}
 
 /* Sidebar */
 #roue-sidebar {
@@ -33,9 +59,7 @@ body.green-screen #roue-container {
 }
 
 #roue-sidebar.hidden {
-    transform: translateX(-100%);
-    position: absolute;
-    height: 100%;
+    display: none !important;
 }
 
 #roue-sidebar h2 {
@@ -97,7 +121,7 @@ body.green-screen #roue-container {
 /* Toggle Menu Button */
 #btn-toggle-menu {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     left: 20px;
     z-index: 20;
     background: #1e293b;
@@ -128,7 +152,6 @@ body.green-screen #roue-container {
     position: relative;
     width: 600px;
     height: 600px;
-    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
 }
 
 #wheel-canvas {
@@ -150,7 +173,6 @@ body.green-screen #roue-container {
     border-right: 20px solid transparent;
     border-top: 40px solid #ef4444; /* Changed to red for visibility */
     z-index: 5;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
 }
 
 /* Winner Overlay */
