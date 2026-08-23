@@ -654,6 +654,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                         c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_correct, user_id))
                     except:
                         c.execute('UPDATE users SET submitted_grid = NULL WHERE id = ?', (user_id,))
+                
+                # Award a win to the player(s) with the highest score_live
+                c.execute('SELECT MAX(score_live) FROM users')
+                max_score = c.fetchone()
+                if max_score and max_score[0] and max_score[0] > 0:
+                    c.execute('UPDATE users SET wins = wins + 1 WHERE score_live = ?', (max_score[0],))
+                
                 conn.commit()
                 conn.close()
 
