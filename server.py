@@ -175,9 +175,32 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         url_path = self.path.split('?')[0]
         
-        if url_path == '/roue' or url_path == '/roue/':
-            self.path = '/roue.html'
-            return super().do_GET()
+        if url_path == '/roue' or url_path == '/roue/' or url_path == '/roue.html':
+            try:
+                with open('public/roue.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                self.send_error(404, "File not found")
+            return
+            
+        if url_path == '/roue.css' or url_path == '/roue.js':
+            try:
+                with open(f'public{url_path}', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                if url_path.endswith('.css'):
+                    self.send_header('Content-type', 'text/css; charset=utf-8')
+                else:
+                    self.send_header('Content-type', 'application/javascript; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception:
+                self.send_error(404, "File not found")
+            return
             
         if url_path == '/api/users/all':
             self.send_response(200)
