@@ -174,6 +174,11 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         url_path = self.path.split('?')[0]
+        
+        if url_path == '/roue':
+            self.path = '/roue.html'
+            return super().do_GET()
+            
         if url_path == '/api/users/all':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')

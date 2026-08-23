@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roue Aléatoire - AminatoBingo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="roue.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+    <div id="roue-container">
+        <!-- Sidebar Controls -->
+        <aside id="roue-sidebar" class="glass-panel">
+            <h2>Configuration de la Roue</h2>
+            <div class="control-group">
+                <label for="phrases-input">Phrases (une par ligne) :</label>
+                <textarea id="phrases-input" rows="10" placeholder="Entrez vos phrases ici...">Gage 1
+VIP
+Rien du tout
+Chanson
+Gage 2</textarea>
+            </div>
+            
+            <div class="control-group">
+                <button id="btn-update-wheel" class="btn primary">Mettre à jour la roue</button>
+            </div>
+
+            <div class="control-group toggle-group">
+                <label for="green-screen-toggle">Mode Fond Vert (OBS)</label>
+                <label class="switch">
+                    <input type="checkbox" id="green-screen-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            
+            <a href="/" class="back-link">← Retour au Bingo</a>
+        </aside>
+
+        <!-- Main Wheel Area -->
+        <main id="roue-main">
+            <div class="wheel-wrapper">
+                <canvas id="wheel-canvas" width="600" height="600"></canvas>
+                <div class="wheel-pointer"></div>
+            </div>
+            <button id="btn-spin" class="btn action-btn">TOURNER !</button>
+            
+            <!-- Winner Overlay -->
+            <div id="winner-overlay" class="hidden">
+                <h2 class="winner-title">Le gagnant est :</h2>
+                <div id="winner-text" class="winner-text"></div>
+                <button id="btn-close-winner" class="btn primary">Fermer</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="roue.js"></script>
+</body>
+</html>
