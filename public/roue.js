@@ -22,6 +22,12 @@ const colors = [
 ];
 
 function init() {
+    // Persistence
+    const savedPhrases = localStorage.getItem('bingo_wheel_phrases');
+    if (savedPhrases) {
+        inputPhrases.value = savedPhrases;
+    }
+
     parsePhrases();
     drawWheel();
     
@@ -29,6 +35,7 @@ function init() {
     canvas.style.transition = 'transform 5s cubic-bezier(0.2, 0.8, 0.3, 1)';
     
     btnUpdate.addEventListener('click', () => {
+        localStorage.setItem('bingo_wheel_phrases', inputPhrases.value);
         parsePhrases();
         drawWheel();
         currentRotation = 0;
