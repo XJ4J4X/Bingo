@@ -58,7 +58,7 @@ async function init() {
 
 async function fetchPhrases() {
     try {
-        const res = await fetch('/api/phrases');
+        const res = await fetch('/api/phrases?t=' + Date.now());
         const data = await res.json();
         BINGO_PHRASES = data.map(item => item.phrase);
     } catch (err) {
