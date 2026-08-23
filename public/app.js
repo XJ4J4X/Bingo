@@ -454,12 +454,13 @@ validateGridBtn.addEventListener('click', async () => {
 });
 
 let currentLeaderboardMode = 'score';
-let leaderboardData = { top_score: [], top_wins: [] };
+let leaderboardData = { top_score: [], top_wins: [], top_live: [] };
 
 document.getElementById('btn-top-score')?.addEventListener('click', () => {
     currentLeaderboardMode = 'score';
     document.getElementById('btn-top-score').classList.add('active');
     document.getElementById('btn-top-wins').classList.remove('active');
+    document.getElementById('btn-top-live')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Score';
     renderLeaderboard();
 });
@@ -468,7 +469,17 @@ document.getElementById('btn-top-wins')?.addEventListener('click', () => {
     currentLeaderboardMode = 'wins';
     document.getElementById('btn-top-wins').classList.add('active');
     document.getElementById('btn-top-score').classList.remove('active');
+    document.getElementById('btn-top-live')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Victoires';
+    renderLeaderboard();
+});
+
+document.getElementById('btn-top-live')?.addEventListener('click', () => {
+    currentLeaderboardMode = 'live';
+    document.getElementById('btn-top-live').classList.add('active');
+    document.getElementById('btn-top-score').classList.remove('active');
+    document.getElementById('btn-top-wins').classList.remove('active');
+    document.getElementById('leaderboard-value-header').textContent = 'Score du Live';
     renderLeaderboard();
 });
 
@@ -477,9 +488,9 @@ async function loadLeaderboard() {
         const res = await fetch('/api/leaderboard?t=' + Date.now());
         const data = await res.json();
         if (Array.isArray(data)) {
-            leaderboardData = { top_score: data, top_wins: [] };
+            leaderboardData = { top_score: data, top_wins: [], top_live: [] };
         } else {
-            leaderboardData = data || { top_score: [], top_wins: [] };
+            leaderboardData = data || { top_score: [], top_wins: [], top_live: [] };
         }
         renderLeaderboard();
     } catch (err) {
@@ -489,7 +500,9 @@ async function loadLeaderboard() {
 
 function renderLeaderboard() {
     leaderboardBody.innerHTML = '';
-    const data = currentLeaderboardMode === 'score' ? leaderboardData.top_score : leaderboardData.top_wins;
+    let data = leaderboardData.top_score;
+    if (currentLeaderboardMode === 'wins') data = leaderboardData.top_wins;
+    if (currentLeaderboardMode === 'live') data = leaderboardData.top_live;
     
     if (!data || data.length === 0) {
         leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Aucun score pour le moment.</td></tr>';
@@ -517,7 +530,9 @@ function renderLeaderboard() {
             tr.style.backgroundColor = 'var(--bg-tertiary)'; // Highlight
         }
         
-        const val = currentLeaderboardMode === 'score' ? `${user.score} pts` : `${user.wins} victoires`;
+        let val = `${user.score} pts`;
+        if (currentLeaderboardMode === 'wins') val = `${user.wins} victoires`;
+        if (currentLeaderboardMode === 'live') val = `${user.score_live} pts (Live)`;
         
         tr.innerHTML = `
             <td>#${index + 1}</td>

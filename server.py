@@ -82,7 +82,8 @@ def init_db():
             wins INTEGER DEFAULT 0,
             lives_participated INTEGER DEFAULT 0,
             boxes_checked INTEGER DEFAULT 0,
-            boxes_correct INTEGER DEFAULT 0
+            boxes_correct INTEGER DEFAULT 0,
+            score_live INTEGER DEFAULT 0
         )
     ''')
     
@@ -105,6 +106,8 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN boxes_checked INTEGER DEFAULT 0")
     if 'boxes_correct' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN boxes_correct INTEGER DEFAULT 0")
+    if 'score_live' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN score_live INTEGER DEFAULT 0")
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -197,9 +200,12 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             c.execute('SELECT pseudo, wins, color FROM users ORDER BY wins DESC LIMIT 50')
             top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2]} for row in c.fetchall()]
+            
+            c.execute('SELECT pseudo, score_live, color FROM users WHERE score_live > 0 ORDER BY score_live DESC LIMIT 50')
+            top_live = [{'pseudo': row[0], 'score_live': row[1], 'color': row[2]} for row in c.fetchall()]
             conn.close()
             
-            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins}).encode('utf-8'))
+            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live}).encode('utf-8'))
             
         elif url_path == '/api/user_stats':
             pseudo = self.headers.get('pseudo', '').strip()
@@ -487,7 +493,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     boxes_correct = len(checked_phrases)
                     
                 new_score = user[1] + score_to_add
-                c.execute('UPDATE users SET score = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ?, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, boxes_checked, boxes_correct, user[0]))
+                c.execute('UPDATE users SET score = ?, score_live = score_live + ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ?, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_checked, boxes_correct, user[0]))
                 conn.commit()
                 conn.close()
                 self.send_response(200)
@@ -585,6 +591,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 profile_id = data.get("profile_id")
                 conn = get_db_connection()
                 c = conn.cursor()
+                # Reset score_live for all users when a new live starts
+                c.execute('UPDATE users SET score_live = 0')
+                conn.commit()
+                
                 if profile_id and str(profile_id) != "random":
                     c.execute('SELECT phrases_text FROM profiles WHERE id = ?', (profile_id,))
                     row = c.fetchone()
@@ -641,7 +651,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                                 score_to_add += 10
                                 boxes_correct += 1
                         new_score = current_score + score_to_add
-                        c.execute('UPDATE users SET score = ?, submitted_grid = NULL, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, boxes_correct, user_id))
+                        c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_correct, user_id))
                     except:
                         c.execute('UPDATE users SET submitted_grid = NULL WHERE id = ?', (user_id,))
                 conn.commit()
