@@ -35,15 +35,6 @@ body.green-screen .winner-text {
     -webkit-text-fill-color: white !important;
     text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 4px 10px rgba(0,0,0,0.8) !important;
 }
-body.green-screen #roue-sidebar {
-    opacity: 0.1;
-    pointer-events: none;
-}
-body.green-screen #roue-sidebar:hover {
-    opacity: 1;
-    pointer-events: all;
-}
-
 /* Sidebar */
 #roue-sidebar {
     width: 350px;
