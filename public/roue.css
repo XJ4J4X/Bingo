@@ -29,6 +29,9 @@ body.green-screen #winner-overlay {
     box-shadow: none !important;
     backdrop-filter: none !important;
 }
+body.green-screen #btn-close-winner {
+    display: none !important;
+}
 body.green-screen .winner-text {
     background: none !important;
     color: white !important;

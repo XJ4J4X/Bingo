@@ -49,6 +49,11 @@ function init() {
         winnerOverlay.classList.add('hidden');
     });
     
+    // Also close if clicking anywhere on the overlay (useful for green screen mode)
+    winnerOverlay.addEventListener('click', () => {
+        winnerOverlay.classList.add('hidden');
+    });
+    
     toggleGreenScreen.addEventListener('change', (e) => {
         if (e.target.checked) {
             document.body.classList.add('green-screen');
