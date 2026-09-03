@@ -587,39 +587,33 @@ if (csvUpload) {
             // Parse lines
             const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             
-            if (lines.length < 2) {
-                alert("⚠️ Le fichier CSV doit contenir au moins une ligne de titres (Profils) et une ligne de phrases.");
+            if (lines.length === 0) {
+                alert("⚠️ Le fichier CSV est vide.");
                 return;
             }
             
-            // Extract headers
-            const headers = lines[0].split(separator).map(h => {
-                let text = h.trim();
-                if (text.startsWith('"') && text.endsWith('"')) text = text.substring(1, text.length - 1);
-                return text;
-            });
+            pendingBulkProfiles = [];
             
-            pendingBulkProfiles = headers.map(h => ({ name: h, phrases: [] }));
-            
-            // Extract phrases
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(separator);
-                for (let c = 0; c < headers.length; c++) {
-                    if (c < cols.length) {
-                        let text = cols[c].trim();
-                        if (text.startsWith('"') && text.endsWith('"')) text = text.substring(1, text.length - 1);
-                        if (text) {
-                            pendingBulkProfiles[c].phrases.push(text);
-                        }
+            // Extract profiles row by row
+            // Each row: ProfileName, Phrase1, Phrase2, ... Phrase16
+            for (let i = 0; i < lines.length; i++) {
+                const cols = lines[i].split(separator).map(c => {
+                    let text = c.trim();
+                    if (text.startsWith('"') && text.endsWith('"')) text = text.substring(1, text.length - 1);
+                    return text;
+                });
+                
+                if (cols.length > 1) {
+                    const name = cols[0];
+                    const phrases = cols.slice(1).filter(p => p.length > 0);
+                    if (name && phrases.length > 0) {
+                        pendingBulkProfiles.push({ name: name, phrases: phrases });
                     }
                 }
             }
             
-            // Filter out empty profiles
-            pendingBulkProfiles = pendingBulkProfiles.filter(p => p.name && p.phrases.length > 0);
-            
             if (pendingBulkProfiles.length === 0) {
-                alert("⚠️ Aucun profil valide trouvé dans le CSV.");
+                alert("⚠️ Aucun profil valide trouvé dans le CSV. Chaque ligne doit contenir : Nom du Profil, Phrase 1, Phrase 2...");
                 return;
             }
             
