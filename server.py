@@ -885,6 +885,24 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
+            elif url_path == '/api/admin/profiles/update':
+                profile_id = data.get('id')
+                name = data.get('name', '').strip()
+                phrases_text = data.get('phrases_text', '').strip()
+                if profile_id and name and phrases_text:
+                    conn = get_db_connection()
+                    c = conn.cursor()
+                    try:
+                        c.execute('UPDATE profiles SET name = ?, phrases_text = ? WHERE id = ?', (name, phrases_text, profile_id))
+                        conn.commit()
+                        self.send_response(200)
+                    except Exception as e:
+                        self.send_response(400)
+                    finally:
+                        conn.close()
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                
             elif url_path == '/api/admin/profiles/delete':
                 profile_id = data.get('id')
                 conn = get_db_connection()

@@ -121,13 +121,17 @@
 
             <div class="admin-controls">
                 <h3>Gestion des Profils de Grille</h3>
-                <p>Créez un profil en collant 16 phrases (une par ligne).</p>
+                <p>Créez ou modifiez un profil en collant 16 phrases (une par ligne) ou via un fichier CSV.</p>
                 <div class="flex-row" style="margin-bottom: 10px; align-items: flex-start;">
                     <div style="display:flex; flex-direction:column; gap:5px; flex:1;">
                         <input type="text" id="new-profile-name" placeholder="Nom du Profil (ex: Soirée LoL)">
-                        <textarea id="new-profile-phrases" rows="6" placeholder="Collez ici vos 16 phrases (une par ligne)..."></textarea>
+                        <textarea id="new-profile-phrases" rows="6" placeholder="Collez ici vos phrases (une par ligne)..."></textarea>
+                        <input type="file" id="csv-upload" accept=".csv" style="font-size: 0.9em;">
                     </div>
-                    <button id="add-profile-btn" style="height: fit-content;">Sauvegarder Profil</button>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <button id="add-profile-btn" style="height: fit-content;">Sauvegarder Profil</button>
+                        <button id="cancel-edit-profile-btn" style="height: fit-content; display: none; background: #95a5a6;">Annuler Édition</button>
+                    </div>
                 </div>
                 
                 <table>
@@ -230,6 +234,6 @@
         v1.0.0.27
     </footer>
 
-    <script src="admin.js?v=25"></script>
+    <script src="admin.js?v=26"></script>
 </body>
 </html>

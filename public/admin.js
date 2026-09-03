@@ -461,6 +461,8 @@ async function loadAdmins() {
     } catch (e) { console.error(e); }
 }
 
+let editingProfileId = null;
+
 async function loadProfiles() {
     try {
         const res = await fetchWithAuth('/api/admin/profiles');
@@ -480,11 +482,29 @@ async function loadProfiles() {
             tr.innerHTML = `
                 <td>${p.id}</td>
                 <td><strong>${p.name}</strong></td>
-                <td><button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">Supprimer</button></td>
+                <td>
+                    <button class="small-btn edit-profile-btn" data-id="${p.id}" style="background-color: #f39c12; color: white;">Éditer</button>
+                    <button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">Supprimer</button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
         
+        document.querySelectorAll('.edit-profile-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.getAttribute('data-id');
+                const profile = profiles.find(pr => pr.id == id);
+                if (profile) {
+                    editingProfileId = id;
+                    document.getElementById('new-profile-name').value = profile.name;
+                    document.getElementById('new-profile-phrases').value = profile.phrases;
+                    document.getElementById('add-profile-btn').textContent = 'Mettre à jour Profil';
+                    document.getElementById('cancel-edit-profile-btn').style.display = 'block';
+                    document.getElementById('new-profile-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+                }
+            });
+        });
+
         document.querySelectorAll('.delete-profile-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 if (confirm('Supprimer ce profil ?')) {
@@ -502,20 +522,70 @@ async function loadProfiles() {
 }
 
 const addProfileBtn = document.getElementById('add-profile-btn');
+const cancelEditProfileBtn = document.getElementById('cancel-edit-profile-btn');
+
+function resetProfileForm() {
+    editingProfileId = null;
+    document.getElementById('new-profile-name').value = '';
+    document.getElementById('new-profile-phrases').value = '';
+    document.getElementById('add-profile-btn').textContent = 'Sauvegarder Profil';
+    cancelEditProfileBtn.style.display = 'none';
+    document.getElementById('csv-upload').value = '';
+}
+
+if (cancelEditProfileBtn) {
+    cancelEditProfileBtn.addEventListener('click', resetProfileForm);
+}
+
 if (addProfileBtn) {
     addProfileBtn.addEventListener('click', async () => {
         const name = document.getElementById('new-profile-name').value.trim();
         const text = document.getElementById('new-profile-phrases').value.trim();
         if (name && text) {
-            await fetchWithAuth('/api/admin/profiles/add', {
+            const url = editingProfileId ? '/api/admin/profiles/update' : '/api/admin/profiles/add';
+            const payload = { name: name, phrases_text: text };
+            if (editingProfileId) {
+                payload.id = editingProfileId;
+            }
+            
+            await fetchWithAuth(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, phrases_text: text })
+                body: JSON.stringify(payload)
             });
-            document.getElementById('new-profile-name').value = '';
-            document.getElementById('new-profile-phrases').value = '';
+            
+            resetProfileForm();
             loadProfiles();
         }
+    });
+}
+
+const csvUpload = document.getElementById('csv-upload');
+if (csvUpload) {
+    csvUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const content = evt.target.result;
+            // Parse CSV: split by line, trim, remove empty lines
+            const lines = content.split(/\r?\n/).map(l => {
+                // If it's a real CSV with quotes, basic unquoting for the first column
+                let line = l.trim();
+                if (line.includes(',') || line.includes(';')) {
+                    // split by comma or semicolon, take first column
+                    const separator = line.includes(';') ? ';' : ',';
+                    line = line.split(separator)[0].trim();
+                }
+                if (line.startsWith('"') && line.endsWith('"')) {
+                    line = line.substring(1, line.length - 1);
+                }
+                return line;
+            }).filter(l => l.length > 0);
+            
+            document.getElementById('new-profile-phrases').value = lines.join('\n');
+        };
+        reader.readAsText(file);
     });
 }
 
