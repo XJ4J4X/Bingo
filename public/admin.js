@@ -571,6 +571,8 @@ if (addProfileBtn) {
     });
 }
 
+let pendingBulkProfiles = [];
+
 const csvUpload = document.getElementById('csv-upload');
 if (csvUpload) {
     csvUpload.addEventListener('change', (e) => {
@@ -580,27 +582,74 @@ if (csvUpload) {
         const reader = new FileReader();
         reader.onload = function(evt) {
             const content = evt.target.result;
-            // Parse CSV: split by line, trim, remove empty lines
-            const lines = content.split(/\r?\n/).map(l => {
-                // If it's a real CSV with quotes, basic unquoting for the first column
-                let line = l.trim();
-                if (line.includes(',') || line.includes(';')) {
-                    // split by comma or semicolon, take first column
-                    const separator = line.includes(';') ? ';' : ',';
-                    line = line.split(separator)[0].trim();
-                }
-                if (line.startsWith('"') && line.endsWith('"')) {
-                    line = line.substring(1, line.length - 1);
-                }
-                return line;
-            }).filter(l => l.length > 0);
+            let separator = content.includes(';') ? ';' : ',';
             
-            if (lines.length === 0) {
-                alert("⚠️ Le fichier semble vide ou mal formaté.");
-            } else {
-                document.getElementById('new-profile-phrases').value = lines.join('\n');
-                alert(`✅ Fichier lu avec succès : ${lines.length} phrases trouvées !`);
+            // Parse lines
+            const lines = content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            
+            if (lines.length < 2) {
+                alert("⚠️ Le fichier CSV doit contenir au moins une ligne de titres (Profils) et une ligne de phrases.");
+                return;
             }
+            
+            // Extract headers
+            const headers = lines[0].split(separator).map(h => {
+                let text = h.trim();
+                if (text.startsWith('"') && text.endsWith('"')) text = text.substring(1, text.length - 1);
+                return text;
+            });
+            
+            pendingBulkProfiles = headers.map(h => ({ name: h, phrases: [] }));
+            
+            // Extract phrases
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(separator);
+                for (let c = 0; c < headers.length; c++) {
+                    if (c < cols.length) {
+                        let text = cols[c].trim();
+                        if (text.startsWith('"') && text.endsWith('"')) text = text.substring(1, text.length - 1);
+                        if (text) {
+                            pendingBulkProfiles[c].phrases.push(text);
+                        }
+                    }
+                }
+            }
+            
+            // Filter out empty profiles
+            pendingBulkProfiles = pendingBulkProfiles.filter(p => p.name && p.phrases.length > 0);
+            
+            if (pendingBulkProfiles.length === 0) {
+                alert("⚠️ Aucun profil valide trouvé dans le CSV.");
+                return;
+            }
+            
+            // Show preview
+            const previewContainer = document.getElementById('csv-preview-content');
+            previewContainer.innerHTML = '';
+            
+            pendingBulkProfiles.forEach(p => {
+                const box = document.createElement('div');
+                box.style.border = '1px solid #3498db';
+                box.style.borderRadius = '5px';
+                box.style.padding = '10px';
+                box.style.flex = '1 1 200px';
+                box.style.minWidth = '200px';
+                box.style.background = '#f7f9fc';
+                
+                let html = `<h4 style="margin-top:0; color:#2980b9;">${p.name} <span style="font-size:0.8em; color:#7f8c8d;">(${p.phrases.length} phrases)</span></h4>`;
+                html += `<ul style="margin:0; padding-left:20px; font-size:0.85em; max-height:150px; overflow-y:auto;">`;
+                p.phrases.forEach(phrase => {
+                    html += `<li>${phrase}</li>`;
+                });
+                html += `</ul>`;
+                
+                box.innerHTML = html;
+                previewContainer.appendChild(box);
+            });
+            
+            const modal = document.getElementById('csv-preview-modal');
+            modal.style.display = 'flex';
+            modal.classList.remove('hidden');
         };
         reader.onerror = function() {
             alert("⚠️ Impossible de lire le fichier.");
@@ -608,6 +657,43 @@ if (csvUpload) {
         reader.readAsText(file);
     });
 }
+
+document.getElementById('csv-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('csv-preview-modal').style.display = 'none';
+    document.getElementById('csv-preview-modal').classList.add('hidden');
+    if (csvUpload) csvUpload.value = '';
+});
+
+document.getElementById('csv-confirm-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('csv-confirm-btn');
+    btn.textContent = "Importation...";
+    btn.disabled = true;
+    
+    let successCount = 0;
+    
+    for (const profile of pendingBulkProfiles) {
+        try {
+            const res = await fetchWithAuth('/api/admin/profiles/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: profile.name, phrases_text: profile.phrases.join('\n') })
+            });
+            if (res.ok) successCount++;
+        } catch (e) {
+            console.error("Erreur ajout profil", profile.name, e);
+        }
+    }
+    
+    document.getElementById('csv-preview-modal').style.display = 'none';
+    document.getElementById('csv-preview-modal').classList.add('hidden');
+    if (csvUpload) csvUpload.value = '';
+    
+    btn.textContent = "Confirmer et Importer";
+    btn.disabled = false;
+    
+    alert(`✅ Importation terminée ! ${successCount} profil(s) ajouté(s).`);
+    loadProfiles();
+});
 
 const backupBtn = document.getElementById('backup-btn');
 if (backupBtn) {
