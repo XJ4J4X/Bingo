@@ -548,14 +548,25 @@ if (addProfileBtn) {
                 payload.id = editingProfileId;
             }
             
-            await fetchWithAuth(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            resetProfileForm();
-            loadProfiles();
+            try {
+                const res = await fetchWithAuth(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    resetProfileForm();
+                    loadProfiles();
+                    alert("Profil sauvegardé avec succès !");
+                } else {
+                    alert("Erreur lors de la sauvegarde (nom déjà pris ?)");
+                }
+            } catch (err) {
+                alert("Erreur réseau: " + err);
+            }
+        } else {
+            alert("⚠️ Veuillez entrer un nom de profil ET coller au moins une phrase.");
         }
     });
 }
@@ -565,6 +576,7 @@ if (csvUpload) {
     csvUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        
         const reader = new FileReader();
         reader.onload = function(evt) {
             const content = evt.target.result;
@@ -583,7 +595,15 @@ if (csvUpload) {
                 return line;
             }).filter(l => l.length > 0);
             
-            document.getElementById('new-profile-phrases').value = lines.join('\n');
+            if (lines.length === 0) {
+                alert("⚠️ Le fichier semble vide ou mal formaté.");
+            } else {
+                document.getElementById('new-profile-phrases').value = lines.join('\n');
+                alert(`✅ Fichier lu avec succès : ${lines.length} phrases trouvées !`);
+            }
+        };
+        reader.onerror = function() {
+            alert("⚠️ Impossible de lire le fichier.");
         };
         reader.readAsText(file);
     });
