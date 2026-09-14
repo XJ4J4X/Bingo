@@ -193,7 +193,7 @@ async function loadLiveData() {
                 cell.className = 'bingo-cell';
                 cell.id = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
                 
-                const highlighted = phrase.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+                const highlighted = phrase;
                 cell.innerHTML = highlighted;
                 
                 cell.addEventListener('click', () => {
@@ -270,7 +270,7 @@ async function loadUsers() {
         
         users.forEach(u => {
             const tr = document.createElement('tr');
-            const pseudoHtml = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            const pseudoHtml = u.pseudo;
             tr.innerHTML = `
                 <td>${u.id}</td>
                 <td><strong>${pseudoHtml}</strong></td>

@@ -253,7 +253,7 @@ function generateGrid() {
         cell.className = 'bingo-cell';
         const phraseText = phrasesToUse[i] || "Case Vide";
         cell.setAttribute('data-phrase', phraseText);
-        cell.innerHTML = phraseText.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+        cell.innerHTML = phraseText;
         
         cell.addEventListener('click', () => {
             if (!gridLocked) {
@@ -529,7 +529,7 @@ function renderLeaderboard() {
     data.forEach((user, index) => {
         const tr = document.createElement('tr');
         
-        let pseudoDisplay = user.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+        let pseudoDisplay = user.pseudo;
         let pseudoClass = '';
         let pseudoStyle = '';
         
@@ -722,7 +722,7 @@ async function loadAllPlayers() {
             const div = document.createElement('div');
             div.style = "background: var(--bg-secondary); padding: 10px 15px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1);";
             
-            let pseudoDisplay = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            let pseudoDisplay = u.pseudo;
             if (u.pseudo.toLowerCase() === 'aminat0_') {
                 div.classList.add('aminato-effect');
             }
