@@ -137,6 +137,18 @@ async function syncGameState() {
         const res = await fetch('/api/game/state');
         const data = await res.json();
         
+        const toggleRulesBtn = document.getElementById('toggle-rules-btn');
+        if (toggleRulesBtn && data.rules_enabled !== undefined) {
+            toggleRulesBtn.textContent = data.rules_enabled ? 'Désactiver Règlement: ON' : 'Activer Règlement: OFF';
+            if(data.rules_enabled) {
+                toggleRulesBtn.classList.remove('warning-btn');
+                toggleRulesBtn.classList.add('success-btn');
+            } else {
+                toggleRulesBtn.classList.remove('success-btn');
+                toggleRulesBtn.classList.add('warning-btn');
+            }
+        }
+        
         if (data.is_active) {
             if (data.is_locked) {
                 gameStatus.textContent = "Verrouillé (Vérification)";
@@ -898,6 +910,15 @@ document.getElementById('toggle-rules-btn')?.addEventListener('click', async () 
             body: JSON.stringify({ enabled: !isCurrentlyOn })
         });
         if (res.ok) {
+            const data = await res.json();
+            btn.textContent = data.rules_enabled ? 'Désactiver Règlement: ON' : 'Activer Règlement: OFF';
+            if(data.rules_enabled) {
+                btn.classList.remove('warning-btn');
+                btn.classList.add('success-btn');
+            } else {
+                btn.classList.remove('success-btn');
+                btn.classList.add('warning-btn');
+            }
             syncGameState();
         }
     } catch(e) { console.error(e); }
