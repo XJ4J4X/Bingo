@@ -65,7 +65,8 @@ game_state = {
     "verification_mode": "trust",
     "active_phrases": [],
     "admin_ticked": [],
-    "color_choice_user_pseudo": None
+    "color_choice_user_pseudo": None,
+    "rules_enabled": False
 }
 
 def init_db():
@@ -108,6 +109,8 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN boxes_correct INTEGER DEFAULT 0")
     if 'score_live' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN score_live INTEGER DEFAULT 0")
+    if 'has_accepted_rules' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN has_accepted_rules INTEGER DEFAULT 0")
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -243,7 +246,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct, has_accepted_rules FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             
             c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 5')
@@ -254,14 +257,16 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({
-                    'score': user[0],
-                    'wins': user[1],
-                    'lives_participated': user[2],
-                    'boxes_checked': user[3],
-                    'boxes_correct': user[4],
-                    'top_phrases': phrs
-                }).encode('utf-8'))
+                stats = {
+                    "score": user[0],
+                    "wins": user[1],
+                    "lives_participated": user[2],
+                    "boxes_checked": user[3],
+                    "boxes_correct": user[4],
+                    "has_accepted_rules": bool(user[5]),
+                    "top_phrases": phrs
+                }
+                self.wfile.write(json.dumps(stats).encode('utf-8'))
             else:
                 self.send_error(401)
             
@@ -344,8 +349,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id, pseudo, password_words, score FROM users')
-            users = [{'id': row[0], 'pseudo': row[1], 'password': row[2], 'score': row[3]} for row in c.fetchall()]
+            c.execute('SELECT id, pseudo, password_words, score, has_accepted_rules FROM users')
+            users = [{'id': row[0], 'pseudo': row[1], 'password': row[2], 'score': row[3], 'has_accepted_rules': bool(row[4])} for row in c.fetchall()]
             conn.close()
             self.wfile.write(json.dumps(users).encode('utf-8'))
 
@@ -468,15 +473,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT color, has_accepted_rules FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             conn.close()
 
             if user:
+                color = user[0]
+                has_accepted = user[1]
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                self.wfile.write(json.dumps({'success': True, 'token': pseudo, 'color': color, 'has_accepted_rules': bool(has_accepted)}).encode('utf-8'))
             else:
                 self.send_response(401)
                 self.end_headers()

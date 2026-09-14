@@ -868,3 +868,32 @@ window.grantColorChoice = async function(userId) {
         console.error(e);
     }
 }
+
+document.getElementById('toggle-rules-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('toggle-rules-btn');
+    const isCurrentlyOn = btn.textContent.includes('ON');
+    try {
+        const res = await fetchWithAuth('/api/admin/rules/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: !isCurrentlyOn })
+        });
+        if (res.ok) {
+            checkGameState();
+        }
+    } catch(e) { console.error(e); }
+});
+
+document.getElementById('reset-rules-btn')?.addEventListener('click', async () => {
+    if(!confirm("Êtes-vous sûr de vouloir remettre à zéro toutes les validations du règlement ? Tous les joueurs devront le relire.")) return;
+    try {
+        const res = await fetchWithAuth('/api/admin/rules/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if(res.ok) {
+            alert("Règlement réinitialisé pour tous les joueurs !");
+            loadUsers();
+        }
+    } catch(e) { console.error(e); }
+});
