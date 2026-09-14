@@ -87,6 +87,7 @@
                     <input type="number" id="timer-duration" value="10" min="1" style="width: 80px;" title="Temps de jeu (minutes)"> min (Jeu) &nbsp;&nbsp;&nbsp;
                     <input type="number" id="timer-lock-duration" value="2" min="0" style="width: 80px;" title="Temps de vérification (minutes)"> min (Vérif)
                     <button id="start-game-btn">Lancer le Live</button>
+                    <button id="toggle-rules-btn" class="btn warning-btn" style="margin-left: 10px;">Activer Règlement: OFF</button>
                     <button id="stop-game-btn" class="danger-btn">Arrêter le Live</button>
                 </div>
             </div>
@@ -153,6 +154,7 @@
             <div id="accounts-section" style="display: none;">
             <div class="admin-controls">
                 <h3>Gestion des Utilisateurs</h3>
+                <button id="reset-rules-btn" class="btn warning-btn" style="margin-bottom:1rem;">Réinitialiser les signatures (Règlement)</button>
                 <div class="flex-row" style="margin-bottom: 10px;">
                     <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
                     
@@ -168,6 +170,7 @@
                             <th>Mots de passe</th>
                             <th>Score</th>
                             <th>Points (+/-)</th>
+                            <th>Règlement</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -231,7 +234,7 @@
     </main>
 
     <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: #666; font-size: 0.9rem;">
-        v1.0.0.31
+        v1.0.0.32
     </footer>
 
     <!-- Importateur CSV-->

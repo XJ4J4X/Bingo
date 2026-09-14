@@ -335,7 +335,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "is_locked": game_state.get("is_locked", False),
                 "time_left": time_left,
                 "verification_mode": game_state.get("verification_mode", "auto"),
-                "color_choice_user_pseudo": game_state.get("color_choice_user_pseudo")
+                "color_choice_user_pseudo": game_state.get("color_choice_user_pseudo"),
+                "rules_enabled": game_state.get("rules_enabled", False)
             }).encode('utf-8'))
 
 
