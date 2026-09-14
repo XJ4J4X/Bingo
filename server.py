@@ -5,6 +5,8 @@ import json
 import sqlite3
 import random
 import os
+import urllib.parse
+
 
 try:
     import psycopg
@@ -239,8 +241,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live}).encode('utf-8'))
             
         elif url_path == '/api/user_stats':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return
@@ -287,8 +289,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(phrases_to_send).encode('utf-8'))
 
         elif url_path == '/api/user_score':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return
@@ -470,8 +472,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
         elif url_path == '/api/rules/accept':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return

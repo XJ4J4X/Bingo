@@ -354,7 +354,7 @@ async function syncState() {
             if (hasSubmittedScore && window.wasGameActive && window.currentUser) {
                 try {
                     const res = await fetch('/api/user_score', {
-                        headers: { 'pseudo': currentUser, 'password': currentPassword }
+                        headers: { 'pseudo': encodeURIComponent(currentUser), 'password': encodeURIComponent(currentPassword) }
                     });
                     if (res.ok) {
                         const data = await res.json();
@@ -565,8 +565,8 @@ async function loadUserStats() {
     try {
         const res = await fetch('/api/user_stats', {
             headers: {
-                'pseudo': currentUser,
-                'password': currentPassword
+                'pseudo': encodeURIComponent(currentUser),
+                'password': encodeURIComponent(currentPassword)
             }
         });
         if (res.ok) {
@@ -772,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch('/api/rules/accept', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'pseudo': currentUser, 'password': currentPassword }
+                    headers: { 'Content-Type': 'application/json', 'pseudo': encodeURIComponent(currentUser), 'password': encodeURIComponent(currentPassword) }
                 });
                 if (res.ok) {
                     window.hasAcceptedRules = true;
