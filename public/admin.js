@@ -268,6 +268,7 @@ async function loadUsers() {
                     <button class="small-btn add-pts-btn success-btn" data-id="${u.id}">+10</button>
                     <button class="small-btn sub-pts-btn warning-btn" data-id="${u.id}">-10</button>
                 </td>
+                <td>${u.has_accepted_rules ? '✅' : '❌'}</td>
                 <td>
                     <button class="small-btn grant-color-btn" style="background:#9b59b6; color:white; border:none; cursor:pointer;" data-id="${u.id}" title="Donner la roue de couleur">🎨</button>
                     <button class="small-btn delete-btn danger-btn" data-id="${u.id}">Supprimer</button>
@@ -741,9 +742,11 @@ document.addEventListener('DOMContentLoaded', () => {
 const navMainBtn = document.getElementById('nav-main-btn');
 const navStatsBtn = document.getElementById('nav-stats-btn');
 const navAccountsBtn = document.getElementById('nav-accounts-btn');
+const navRulesBtn = document.getElementById('nav-rules-btn');
 const mainAdminPanel = document.getElementById('main-admin-panel');
 const statsSection = document.getElementById('stats-section');
 const accountsSection = document.getElementById('accounts-section');
+const rulesSection = document.getElementById('rules-section');
 const statsUsersContainer = document.getElementById('stats-users-container');
 const statsPhrasesContainer = document.getElementById('stats-phrases-container');
 
@@ -761,10 +764,16 @@ function resetNavBtns() {
         navAccountsBtn.style.color = 'white';
         navAccountsBtn.className = '';
     }
+    if (navRulesBtn) {
+        navRulesBtn.style.backgroundColor = '#3498db';
+        navRulesBtn.style.color = 'white';
+        navRulesBtn.className = '';
+    }
     
     mainAdminPanel.style.display = 'none';
     statsSection.style.display = 'none';
     if (accountsSection) accountsSection.style.display = 'none';
+    if (rulesSection) rulesSection.style.display = 'none';
 }
 
 if (navMainBtn && navStatsBtn) {
@@ -792,6 +801,16 @@ if (navMainBtn && navStatsBtn) {
             navAccountsBtn.className = 'success-btn';
             navAccountsBtn.style.backgroundColor = '';
             navAccountsBtn.style.color = '';
+        });
+    }
+
+    if (navRulesBtn) {
+        navRulesBtn.addEventListener('click', function() {
+            resetNavBtns();
+            if (rulesSection) rulesSection.style.display = 'block';
+            navRulesBtn.className = 'success-btn';
+            navRulesBtn.style.backgroundColor = '';
+            navRulesBtn.style.color = '';
         });
     }
 }
@@ -879,7 +898,7 @@ document.getElementById('toggle-rules-btn')?.addEventListener('click', async () 
             body: JSON.stringify({ enabled: !isCurrentlyOn })
         });
         if (res.ok) {
-            checkGameState();
+            syncGameState();
         }
     } catch(e) { console.error(e); }
 });

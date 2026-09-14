@@ -63,10 +63,11 @@
 
         <section id="admin-content" class="admin-section">
             
-            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <button id="nav-main-btn" class="success-btn" style="padding: 10px 20px; font-weight: bold; flex: 1;">Gestion du Jeu</button>
-                <button id="nav-stats-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Statistiques</button>
-                <button id="nav-accounts-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; background-color: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">Comptes</button>
+            <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="nav-main-btn" class="success-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; min-width: 150px;">Gestion du Jeu</button>
+                <button id="nav-stats-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; min-width: 150px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Statistiques</button>
+                <button id="nav-accounts-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; min-width: 150px; background-color: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">Comptes</button>
+                <button id="nav-rules-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; min-width: 150px; background-color: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer;">Règlement</button>
             </div>
             
             <div class="admin-controls" style="background-color: #e3f2fd; border-color: #bbdefb; margin-top: 15px;">
@@ -87,7 +88,6 @@
                     <input type="number" id="timer-duration" value="10" min="1" style="width: 80px;" title="Temps de jeu (minutes)"> min (Jeu) &nbsp;&nbsp;&nbsp;
                     <input type="number" id="timer-lock-duration" value="2" min="0" style="width: 80px;" title="Temps de vérification (minutes)"> min (Vérif)
                     <button id="start-game-btn">Lancer le Live</button>
-                    <button id="toggle-rules-btn" class="btn warning-btn" style="margin-left: 10px;">Activer Règlement: OFF</button>
                     <button id="stop-game-btn" class="danger-btn">Arrêter le Live</button>
                 </div>
             </div>
@@ -154,7 +154,6 @@
             <div id="accounts-section" style="display: none;">
             <div class="admin-controls">
                 <h3>Gestion des Utilisateurs</h3>
-                <button id="reset-rules-btn" class="btn warning-btn" style="margin-bottom:1rem;">Réinitialiser les signatures (Règlement)</button>
                 <div class="flex-row" style="margin-bottom: 10px;">
                     <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
                     
@@ -229,12 +228,32 @@
                     </div>
                 </div>
             </div>
+            <div id="rules-section" style="display: none;">
+                <div class="admin-controls" style="background-color: #fff3cd; border-color: #ffeeba;">
+                    <h3 style="color: #856404;">Gestion du Règlement Spécial</h3>
+                    <p style="color: #856404; margin-bottom: 15px;">Le règlement spécial permet d'obliger les utilisateurs à lire et accepter des conditions avant de pouvoir jouer. C'est utile pour des événements spéciaux avec des récompenses.</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <strong>1. Activation :</strong><br>
+                            <button id="toggle-rules-btn" class="btn warning-btn" style="margin-top: 5px;">Activer Règlement: OFF</button>
+                            <p style="font-size: 0.9em; margin-top: 5px;">Si activé, une fenêtre s'affichera au milieu de l'écran des joueurs jusqu'à ce qu'ils acceptent.</p>
+                        </div>
+                        
+                        <div style="border-top: 1px solid #ffeeba; padding-top: 15px;">
+                            <strong>2. Gestion des signatures :</strong><br>
+                            <button id="reset-rules-btn" class="btn warning-btn" style="margin-top: 5px;">Réinitialiser toutes les signatures</button>
+                            <p style="font-size: 0.9em; margin-top: 5px;">Cliquez ici si vous avez modifié le règlement (dans le code) et que vous souhaitez forcer tout le monde à l'accepter à nouveau.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </section>
     </main>
 
     <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: #666; font-size: 0.9rem;">
-        v1.0.0.42
+        v1.0.0.44
     </footer>
 
     <!-- Importateur CSV-->
@@ -252,6 +271,6 @@
         </div>
     </div>
 
-    <script src="admin.js?v=34"></script>
+    <script src="admin.js?v=36"></script>
 </body>
 </html>
