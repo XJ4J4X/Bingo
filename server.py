@@ -339,55 +339,6 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "rules_enabled": game_state.get("rules_enabled", False)
             }).encode('utf-8'))
 
-
-        elif url_path == '/api/admin/rules/toggle':
-            admin_data = check_admin(self.headers)
-            if not admin_data or admin_data['role'] not in ['admin', 'superadmin']:
-                self.send_error(401, "Unauthorized")
-                return
-            game_state['rules_enabled'] = data.get('enabled', False)
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'rules_enabled': game_state['rules_enabled']}).encode('utf-8'))
-
-        elif url_path == '/api/admin/rules/reset':
-            admin_data = check_admin(self.headers)
-            if not admin_data or admin_data['role'] not in ['admin', 'superadmin']:
-                self.send_error(401, "Unauthorized")
-                return
-            conn = get_db_connection()
-            c = conn.cursor()
-            c.execute('UPDATE users SET has_accepted_rules = 0')
-            conn.commit()
-            conn.close()
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
-
-        elif url_path == '/api/rules/accept':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
-            if not pseudo or not password:
-                self.send_error(401)
-                return
-            conn = get_db_connection()
-            c = conn.cursor()
-            # Verify credentials
-            c.execute('SELECT id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
-            if not c.fetchone():
-                self.send_error(401)
-                conn.close()
-                return
-            c.execute('UPDATE users SET has_accepted_rules = 1 WHERE pseudo = ?', (pseudo,))
-            conn.commit()
-            conn.close()
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
-
         elif url_path == '/api/admin/users':
             admin_data = check_admin(self.headers)
             if not admin_data:
@@ -492,7 +443,55 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             return
 
-        if url_path == '/api/register':
+        if url_path == '/api/admin/rules/toggle':
+            admin_data = check_admin(self.headers)
+            if not admin_data or admin_data['role'] not in ['admin', 'superadmin']:
+                self.send_error(401, "Unauthorized")
+                return
+            game_state['rules_enabled'] = data.get('enabled', False)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'rules_enabled': game_state['rules_enabled']}).encode('utf-8'))
+
+        elif url_path == '/api/admin/rules/reset':
+            admin_data = check_admin(self.headers)
+            if not admin_data or admin_data['role'] not in ['admin', 'superadmin']:
+                self.send_error(401, "Unauthorized")
+                return
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('UPDATE users SET has_accepted_rules = 0')
+            conn.commit()
+            conn.close()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+
+        elif url_path == '/api/rules/accept':
+            pseudo = self.headers.get('pseudo', '').strip()
+            password = self.headers.get('password', '').strip()
+            if not pseudo or not password:
+                self.send_error(401)
+                return
+            conn = get_db_connection()
+            c = conn.cursor()
+            # Verify credentials
+            c.execute('SELECT id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            if not c.fetchone():
+                self.send_error(401)
+                conn.close()
+                return
+            c.execute('UPDATE users SET has_accepted_rules = 1 WHERE pseudo = ?', (pseudo,))
+            conn.commit()
+            conn.close()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+
+        elif url_path == '/api/register':
             pseudo = data.get('pseudo', '').strip()
             if not pseudo:
                 self.send_error(400, "Bad Request")
