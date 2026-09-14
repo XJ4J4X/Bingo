@@ -123,6 +123,7 @@ registerBtn.addEventListener('click', async () => {
             
             currentUser = pseudo;
             currentPassword = data.password;
+            window.hasAcceptedRules = false;
         } else {
             authMessage.textContent = data.error || "Erreur lors de l'inscription.";
         }
