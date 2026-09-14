@@ -186,8 +186,6 @@ function showWinner() {
     }
 }
 
-// Initialize
-init();
 
 
 // --- PROFILE MANAGEMENT ---
@@ -287,3 +285,6 @@ if(btnDeleteProfile) {
         }
     });
 }
+
+// Initialize at the end after all consts
+init();
