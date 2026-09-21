@@ -137,6 +137,18 @@ async function syncGameState() {
         const res = await fetch('/api/game/state');
         const data = await res.json();
         
+        const toggleRulesBtn = document.getElementById('toggle-rules-btn');
+        if (toggleRulesBtn && data.rules_enabled !== undefined) {
+            toggleRulesBtn.textContent = data.rules_enabled ? 'Désactiver Règlement: ON' : 'Activer Règlement: OFF';
+            if(data.rules_enabled) {
+                toggleRulesBtn.classList.remove('warning-btn');
+                toggleRulesBtn.classList.add('success-btn');
+            } else {
+                toggleRulesBtn.classList.remove('success-btn');
+                toggleRulesBtn.classList.add('warning-btn');
+            }
+        }
+        
         if (data.is_active) {
             if (data.is_locked) {
                 gameStatus.textContent = "Verrouillé (Vérification)";
@@ -181,7 +193,7 @@ async function loadLiveData() {
                 cell.className = 'bingo-cell';
                 cell.id = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
                 
-                const highlighted = phrase.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+                const highlighted = phrase;
                 cell.innerHTML = highlighted;
                 
                 cell.addEventListener('click', () => {
@@ -258,22 +270,61 @@ async function loadUsers() {
         
         users.forEach(u => {
             const tr = document.createElement('tr');
-            const pseudoHtml = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            tr.style.borderBottom = "1px solid #eee";
+            
+            const fontClass = u.font_family || '';
+            let pseudoClass = fontClass;
+            if (u.pseudo.toLowerCase() === 'aminat0_') {
+                pseudoClass += ' aminato-effect';
+            }
+            
             tr.innerHTML = `
-                <td>${u.id}</td>
-                <td><strong>${pseudoHtml}</strong></td>
-                <td><code>${u.password}</code></td>
-                <td><strong>${u.score}</strong></td>
-                <td>
-                    <button class="small-btn add-pts-btn success-btn" data-id="${u.id}">+10</button>
-                    <button class="small-btn sub-pts-btn warning-btn" data-id="${u.id}">-10</button>
+                <td style="padding: 10px;">
+                    <strong class="font-preview ${pseudoClass}" id="font-preview-${u.id}" style="font-size:1.2em;">${u.pseudo}</strong>
                 </td>
-                <td>
-                    <button class="small-btn grant-color-btn" style="background:#9b59b6; color:white; border:none; cursor:pointer;" data-id="${u.id}" title="Donner la roue de couleur">🎨</button>
-                    <button class="small-btn delete-btn danger-btn" data-id="${u.id}">Supprimer</button>
+                <td style="padding: 10px; color: #7f8c8d;"><code>${u.password}</code></td>
+                <td style="padding: 10px; font-weight: bold; font-size:1.1em;">${u.score}</td>
+                <td style="padding: 10px;">
+                    <select class="font-select" data-id="${u.id}" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; background:#fff;">
+                        <option value="" ${fontClass === '' ? 'selected' : ''}>Standard</option>
+                        <option value="font-bangers" ${fontClass === 'font-bangers' ? 'selected' : ''}>Bangers (Fun)</option>
+                        <option value="font-pixel" ${fontClass === 'font-pixel' ? 'selected' : ''}>Pixel (Rétro)</option>
+                        <option value="font-pacifico" ${fontClass === 'font-pacifico' ? 'selected' : ''}>Pacifico (Élégant)</option>
+                        <option value="font-creepster" ${fontClass === 'font-creepster' ? 'selected' : ''}>Creepster (Spooky)</option>
+                        <option value="font-orbitron" ${fontClass === 'font-orbitron' ? 'selected' : ''}>Orbitron (Néon)</option>
+                        ${customFonts.map(f => {
+                            const name = f.split('.')[0];
+                            const cName = 'font-custom-' + name;
+                            return `<option value="${cName}" ${fontClass === cName ? 'selected' : ''}>${name} (Perso)</option>`;
+                        }).join('')}
+                    </select>
+                </td>
+                <td style="padding: 10px; white-space: nowrap;">
+                    <button class="small-btn add-pts-btn success-btn" data-id="${u.id}" style="padding:4px 8px;">+10</button>
+                    <button class="small-btn sub-pts-btn warning-btn" data-id="${u.id}" style="padding:4px 8px;">-10</button>
+                </td>
+                <td style="padding: 10px;">
+                    <button class="small-btn grant-color-btn" style="background:#9b59b6; color:white; border:none; cursor:pointer; padding:4px 8px;" data-id="${u.id}" title="Donner la couleur">🎨</button>
+                    <button class="small-btn delete-btn danger-btn" data-id="${u.id}" style="padding:4px 8px;">🗑️</button>
                 </td>
             `;
             usersTableBody.appendChild(tr);
+        });
+        
+        // Add listeners for font select
+        document.querySelectorAll('.font-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const id = e.target.getAttribute('data-id');
+                const fontClass = e.target.value;
+                const preview = document.getElementById(`font-preview-${id}`);
+                // Keep aminato effect if it's there
+                let finalClass = `font-preview ${fontClass}`;
+                if (preview.classList.contains('aminato-effect')) {
+                    finalClass += ' aminato-effect';
+                }
+                preview.className = finalClass;
+                updateUserFont(id, fontClass);
+            });
         });
         
         document.querySelectorAll('.delete-btn').forEach(btn => {
@@ -741,9 +792,11 @@ document.addEventListener('DOMContentLoaded', () => {
 const navMainBtn = document.getElementById('nav-main-btn');
 const navStatsBtn = document.getElementById('nav-stats-btn');
 const navAccountsBtn = document.getElementById('nav-accounts-btn');
+const navRulesBtn = document.getElementById('nav-rules-btn');
 const mainAdminPanel = document.getElementById('main-admin-panel');
 const statsSection = document.getElementById('stats-section');
 const accountsSection = document.getElementById('accounts-section');
+const rulesSection = document.getElementById('rules-section');
 const statsUsersContainer = document.getElementById('stats-users-container');
 const statsPhrasesContainer = document.getElementById('stats-phrases-container');
 
@@ -761,10 +814,16 @@ function resetNavBtns() {
         navAccountsBtn.style.color = 'white';
         navAccountsBtn.className = '';
     }
+    if (navRulesBtn) {
+        navRulesBtn.style.backgroundColor = '#3498db';
+        navRulesBtn.style.color = 'white';
+        navRulesBtn.className = '';
+    }
     
     mainAdminPanel.style.display = 'none';
     statsSection.style.display = 'none';
     if (accountsSection) accountsSection.style.display = 'none';
+    if (rulesSection) rulesSection.style.display = 'none';
 }
 
 if (navMainBtn && navStatsBtn) {
@@ -792,6 +851,16 @@ if (navMainBtn && navStatsBtn) {
             navAccountsBtn.className = 'success-btn';
             navAccountsBtn.style.backgroundColor = '';
             navAccountsBtn.style.color = '';
+        });
+    }
+
+    if (navRulesBtn) {
+        navRulesBtn.addEventListener('click', function() {
+            resetNavBtns();
+            if (rulesSection) rulesSection.style.display = 'block';
+            navRulesBtn.className = 'success-btn';
+            navRulesBtn.style.backgroundColor = '';
+            navRulesBtn.style.color = '';
         });
     }
 }
@@ -879,7 +948,16 @@ document.getElementById('toggle-rules-btn')?.addEventListener('click', async () 
             body: JSON.stringify({ enabled: !isCurrentlyOn })
         });
         if (res.ok) {
-            checkGameState();
+            const data = await res.json();
+            btn.textContent = data.rules_enabled ? 'Désactiver Règlement: ON' : 'Activer Règlement: OFF';
+            if(data.rules_enabled) {
+                btn.classList.remove('warning-btn');
+                btn.classList.add('success-btn');
+            } else {
+                btn.classList.remove('success-btn');
+                btn.classList.add('warning-btn');
+            }
+            syncGameState();
         }
     } catch(e) { console.error(e); }
 });
@@ -897,3 +975,126 @@ document.getElementById('reset-rules-btn')?.addEventListener('click', async () =
         }
     } catch(e) { console.error(e); }
 });
+
+
+// Gestion de la navigation latérale (Dashboard)
+document.querySelectorAll('.admin-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.admin-nav-item').forEach(nav => nav.classList.remove('active'));
+        item.classList.add('active');
+        
+        document.querySelectorAll('.admin-section').forEach(sec => sec.classList.remove('active'));
+        const target = item.getAttribute('data-target');
+        const targetEl = document.getElementById(target);
+        if(targetEl) targetEl.classList.add('active');
+        
+        if(target === 'users') {
+            loadUsers();
+        } else if(target === 'profiles') {
+            loadProfiles();
+        } else if(target === 'stats') {
+            loadStats();
+        } else if(target === 'settings') {
+            loadAdmins();
+        }
+    });
+});
+
+async function updateUserFont(userId, font_family) {
+    try {
+        const res = await fetch('/api/admin/user/font', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
+            body: JSON.stringify({ user_id: userId, font_family: font_family })
+        });
+        if (!res.ok) {
+            alert('Erreur lors de la sauvegarde de la police');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+window.changeUserFont = function(userId, fontClass) {
+    const preview = document.getElementById(`font-preview-${userId}`);
+    preview.className = `font-preview ${fontClass}`;
+    updateUserFont(userId, fontClass);
+};
+
+// GESTION UPLOAD ET CHARGEMENT POLICES PERSONNALISÉES
+let customFonts = [];
+
+async function loadCustomFonts() {
+    try {
+        const res = await fetch('/api/fonts');
+        if (res.ok) {
+            const data = await res.json();
+            customFonts = data.fonts;
+            
+            // Inject CSS
+            let style = document.getElementById('custom-fonts-style');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'custom-fonts-style';
+                document.head.appendChild(style);
+            }
+            let css = '';
+            customFonts.forEach(f => {
+                const name = f.split('.')[0];
+                const fontClass = 'font-custom-' + name;
+                css += `@font-face { font-family: '${name}'; src: url('fonts/${f}'); }
+`;
+                css += `.${fontClass} { font-family: '${name}', sans-serif; }
+`;
+            });
+            style.innerHTML = css;
+        }
+    } catch (e) { console.error(e); }
+}
+
+document.getElementById('upload-font-btn')?.addEventListener('click', async () => {
+    const fileInput = document.getElementById('font-upload-input');
+    const status = document.getElementById('font-upload-status');
+    if (!fileInput.files.length) {
+        status.textContent = 'Veuillez sélectionner un fichier.';
+        status.style.color = 'red';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('font_file', fileInput.files[0]);
+    
+    status.textContent = 'Envoi en cours...';
+    status.style.color = 'orange';
+    
+    try {
+        const res = await fetch('/api/admin/fonts/upload', {
+            method: 'POST',
+            headers: { 'Authorization': adminToken },
+            body: formData
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            status.textContent = `Succès ! Polices ajoutées : ${data.saved.join(', ')}`;
+            status.style.color = 'green';
+            fileInput.value = '';
+            
+            // Reload fonts
+            await loadCustomFonts();
+            // Re-render users to update selects
+            if (document.getElementById('users').classList.contains('active')) {
+                loadUsers();
+            }
+        } else {
+            status.textContent = 'Erreur lors de l'upload.';
+            status.style.color = 'red';
+        }
+    } catch (e) {
+        status.textContent = 'Erreur serveur.';
+        status.style.color = 'red';
+    }
+});
+
+// Appel initial
+loadCustomFonts();

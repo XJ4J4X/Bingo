@@ -5,6 +5,8 @@ import json
 import sqlite3
 import random
 import os
+import urllib.parse
+
 
 try:
     import psycopg
@@ -111,6 +113,26 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN score_live INTEGER DEFAULT 0")
     if 'has_accepted_rules' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN has_accepted_rules INTEGER DEFAULT 0")
+    if 'current_streak' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN current_streak INTEGER DEFAULT 0")
+    if 'max_streak' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN max_streak INTEGER DEFAULT 0")
+    if 'font_family' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN font_family TEXT DEFAULT ''")
+    if 'last_live_id' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN last_live_id INTEGER DEFAULT 0")
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS lives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    c.execute('SELECT MAX(id) FROM lives')
+    max_live = c.fetchone()[0]
+    global game_state
+    game_state['current_live_id'] = max_live if max_live else 0
+
     c.execute('''
         CREATE TABLE IF NOT EXISTS phrases (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,27 +248,31 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, score, color FROM users ORDER BY score DESC LIMIT 50')
-            top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, score, color, current_streak, font_family FROM users ORDER BY score DESC LIMIT 50')
+            top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
             
-            c.execute('SELECT pseudo, wins, color FROM users ORDER BY wins DESC LIMIT 50')
-            top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, wins, color, current_streak, font_family FROM users ORDER BY wins DESC LIMIT 50')
+            top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
             
-            c.execute('SELECT pseudo, score_live, color FROM users WHERE score_live > 0 ORDER BY score_live DESC LIMIT 50')
-            top_live = [{'pseudo': row[0], 'score_live': row[1], 'color': row[2]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, score_live, color, current_streak, font_family FROM users WHERE score_live > 0 ORDER BY score_live DESC LIMIT 50')
+            top_live = [{'pseudo': row[0], 'score_live': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            
+            c.execute('SELECT pseudo, max_streak, color, current_streak, font_family FROM users WHERE max_streak > 0 ORDER BY max_streak DESC LIMIT 50')
+            top_streaks = [{'pseudo': row[0], 'max_streak': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            
             conn.close()
             
-            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live}).encode('utf-8'))
+            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live, "top_streaks": top_streaks}).encode('utf-8'))
             
         elif url_path == '/api/user_stats':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct, has_accepted_rules FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct, has_accepted_rules, current_streak, font_family FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             
             c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 5')
@@ -270,6 +296,19 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_error(401)
             
+        elif url_path == '/api/fonts':
+            import os
+            font_dir = os.path.join('public', 'fonts')
+            fonts = []
+            if os.path.exists(font_dir):
+                for f in os.listdir(font_dir):
+                    if f.endswith(('.ttf', '.otf', '.woff', '.woff2')):
+                        fonts.append(f)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'fonts': fonts}).encode('utf-8'))
+            
         elif url_path == '/api/phrases':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -287,8 +326,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(phrases_to_send).encode('utf-8'))
 
         elif url_path == '/api/user_score':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return
@@ -350,8 +389,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id, pseudo, password_words, score, has_accepted_rules FROM users')
-            users = [{'id': row[0], 'pseudo': row[1], 'password': row[2], 'score': row[3], 'has_accepted_rules': bool(row[4])} for row in c.fetchall()]
+            c.execute('SELECT id, pseudo, password_words, score, has_accepted_rules, font_family FROM users')
+            users = [{'id': row[0], 'pseudo': row[1], 'password': row[2], 'score': row[3], 'has_accepted_rules': bool(row[4]), 'font_family': row[5]} for row in c.fetchall()]
             conn.close()
             self.wfile.write(json.dumps(users).encode('utf-8'))
 
@@ -470,8 +509,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
         elif url_path == '/api/rules/accept':
-            pseudo = self.headers.get('pseudo', '').strip()
-            password = self.headers.get('password', '').strip()
+            pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
+            password = urllib.parse.unquote(self.headers.get('password', '').strip())
             if not pseudo or not password:
                 self.send_error(401)
                 return
@@ -522,7 +561,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT color, has_accepted_rules FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT color, has_accepted_rules, current_streak FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             conn.close()
 
@@ -553,7 +592,30 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             user = c.fetchone()
             
             if user:
-                if game_state["is_active"] and game_state["verification_mode"] == "strict":
+                # Update streak if the game is active
+                if game_state.get("is_active"):
+                    c.execute('SELECT current_streak, max_streak, last_live_id FROM users WHERE id = ?', (user[0],))
+                    streak_info = c.fetchone()
+                    if streak_info:
+                        curr_streak, m_streak, last_live = streak_info
+                        curr_streak = curr_streak or 0
+                        m_streak = m_streak or 0
+                        last_live = last_live or 0
+                        curr_live = game_state.get('current_live_id', 0)
+                        
+                        if curr_live > 0 and last_live != curr_live:
+                            if last_live == curr_live - 1:
+                                curr_streak += 1
+                            else:
+                                curr_streak = 1
+                            
+                            m_streak = max(m_streak, curr_streak)
+                            last_live = curr_live
+                            
+                            c.execute('UPDATE users SET current_streak = ?, max_streak = ?, last_live_id = ? WHERE id = ?', 
+                                      (curr_streak, m_streak, last_live, user[0]))
+
+                if game_state.get("is_active") and game_state.get("verification_mode") == "strict":
                     boxes_checked = len(checked_phrases)
                     c.execute('UPDATE users SET submitted_grid = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ? WHERE id = ?', (json.dumps(checked_phrases), boxes_checked, user[0]))
                     conn.commit()
@@ -567,9 +629,9 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 boxes_checked = len(checked_phrases)
                 boxes_correct = 0
                 score_to_add = 0
-                if game_state["verification_mode"] == "strict":
+                if game_state.get("verification_mode") == "strict":
                     for phrase in checked_phrases:
-                        if phrase in game_state["admin_ticked"]:
+                        if phrase in game_state.get("admin_ticked", []):
                             score_to_add += 10
                             boxes_correct += 1
                 else:
@@ -577,6 +639,9 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     boxes_correct = len(checked_phrases)
                     
                 new_score = user[1] + score_to_add
+                
+                # In trust mode, or when game is inactive, we update standard stats.
+                # Note: if the game was active and strict, it already returned above.
                 c.execute('UPDATE users SET score = ?, score_live = score_live + ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ?, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_checked, boxes_correct, user[0]))
                 conn.commit()
                 conn.close()
@@ -676,7 +741,12 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn = get_db_connection()
                 c = conn.cursor()
                 # Reset score_live for all users when a new live starts
-                c.execute('UPDATE users SET score_live = 0')
+                c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL')
+                c.execute('INSERT INTO lives DEFAULT VALUES')
+                c.execute('SELECT MAX(id) FROM lives')
+                max_live = c.fetchone()[0]
+                global game_state
+                game_state["current_live_id"] = max_live if max_live else 0
                 conn.commit()
                 
                 if profile_id and str(profile_id) != "random":
@@ -801,6 +871,68 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode())
+
+            elif url_path == '/api/admin/user/font':
+                user_id = data.get("user_id")
+                font_family = data.get("font_family", "")
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('UPDATE users SET font_family = ? WHERE id = ?', (font_family, user_id))
+                conn.commit()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                
+            elif url_path == '/api/admin/fonts/upload':
+                import cgi, os, zipfile, io
+                
+                content_type = self.headers.get('Content-Type')
+                if not content_type or not content_type.startswith('multipart/form-data'):
+                    self.send_error(400, "Bad Request")
+                    return
+                
+                form = cgi.FieldStorage(
+                    fp=self.rfile,
+                    headers=self.headers,
+                    environ={'REQUEST_METHOD': 'POST',
+                             'CONTENT_TYPE': self.headers['Content-Type'],
+                             }
+                )
+                
+                if 'font_file' not in form:
+                    self.send_error(400, "No file uploaded")
+                    return
+                    
+                file_item = form['font_file']
+                filename = file_item.filename
+                file_data = file_item.file.read()
+                
+                os.makedirs(os.path.join('public', 'fonts'), exist_ok=True)
+                saved_fonts = []
+                
+                if filename.lower().endswith('.zip'):
+                    with zipfile.ZipFile(io.BytesIO(file_data)) as z:
+                        for zip_info in z.infolist():
+                            if zip_info.filename.lower().endswith(('.ttf', '.otf', '.woff', '.woff2')):
+                                safe_name = os.path.basename(zip_info.filename)
+                                if safe_name:
+                                    extracted_path = os.path.join('public', 'fonts', safe_name)
+                                    with open(extracted_path, 'wb') as f_out:
+                                        f_out.write(z.read(zip_info.filename))
+                                    saved_fonts.append(safe_name)
+                elif filename.lower().endswith(('.ttf', '.otf', '.woff', '.woff2')):
+                    safe_name = os.path.basename(filename)
+                    extracted_path = os.path.join('public', 'fonts', safe_name)
+                    with open(extracted_path, 'wb') as f_out:
+                        f_out.write(file_data)
+                    saved_fonts.append(safe_name)
+                    
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'success': True, 'saved': saved_fonts}).encode('utf-8'))
 
             elif url_path == '/api/admin/users/reset':
                 conn = get_db_connection()

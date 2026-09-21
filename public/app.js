@@ -1,3 +1,33 @@
+
+// CHARGEMENT POLICES PERSONNALISÉES
+async function loadCustomFonts() {
+    try {
+        const res = await fetch('/api/fonts');
+        if (res.ok) {
+            const data = await res.json();
+            
+            // Inject CSS
+            let style = document.getElementById('custom-fonts-style');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'custom-fonts-style';
+                document.head.appendChild(style);
+            }
+            let css = '';
+            data.fonts.forEach(f => {
+                const name = f.split('.')[0];
+                const fontClass = 'font-custom-' + name;
+                css += `@font-face { font-family: '${name}'; src: url('fonts/${f}'); }
+`;
+                css += `.${fontClass} { font-family: '${name}', sans-serif !important; }
+`;
+            });
+            style.innerHTML = css;
+        }
+    } catch (e) { console.error(e); }
+}
+loadCustomFonts();
+
 // Aminato si tu lis cette phrase j'ai galerer mdr
 console.log('%c' + `
                _    __  __ ___ _  _    _ _____ ___  
@@ -22,6 +52,8 @@ let gridLocked = true;
 let hasSubmittedScore = false;
 
 let BINGO_PHRASES = [];
+
+
 
 const authSection = document.getElementById('auth-section');
 const gameSection = document.getElementById('game-section');
@@ -123,6 +155,7 @@ registerBtn.addEventListener('click', async () => {
             
             currentUser = pseudo;
             currentPassword = data.password;
+            window.currentUserStreak = 0;
             window.hasAcceptedRules = false;
         } else {
             authMessage.textContent = data.error || "Erreur lors de l'inscription.";
@@ -229,7 +262,17 @@ async function startGame() {
     if (document.getElementById('main-nav')) {
         document.getElementById('main-nav').classList.remove('hidden');
     }
-    currentPseudoSpan.textContent = currentUser;
+    
+    let headerPseudo = currentUser;
+    if (window.currentUserStreak && window.currentUserStreak > 1) {
+        let level = 0;
+        if (window.currentUserStreak >= 3 && window.currentUserStreak <= 4) level = 1;
+        else if (window.currentUserStreak >= 5 && window.currentUserStreak <= 9) level = 2;
+        else if (window.currentUserStreak >= 10) level = 3;
+        headerPseudo += ` <span class="streak-flame streak-level-${level}" title="Série : ${window.currentUserStreak}">🔥${window.currentUserStreak}</span>`;
+    }
+    currentPseudoSpan.innerHTML = headerPseudo;
+
     
     hasSubmittedScore = false;
     gameMessage.textContent = "";
@@ -253,7 +296,7 @@ function generateGrid() {
         cell.className = 'bingo-cell';
         const phraseText = phrasesToUse[i] || "Case Vide";
         cell.setAttribute('data-phrase', phraseText);
-        cell.innerHTML = phraseText.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+        cell.innerHTML = phraseText;
         
         cell.addEventListener('click', () => {
             if (!gridLocked) {
@@ -354,7 +397,7 @@ async function syncState() {
             if (hasSubmittedScore && window.wasGameActive && window.currentUser) {
                 try {
                     const res = await fetch('/api/user_score', {
-                        headers: { 'pseudo': currentUser, 'password': currentPassword }
+                        headers: { 'pseudo': encodeURIComponent(currentUser), 'password': encodeURIComponent(currentPassword) }
                     });
                     if (res.ok) {
                         const data = await res.json();
@@ -478,6 +521,7 @@ document.getElementById('btn-top-score')?.addEventListener('click', () => {
     document.getElementById('btn-top-score').classList.add('active');
     document.getElementById('btn-top-wins').classList.remove('active');
     document.getElementById('btn-top-live')?.classList.remove('active');
+    document.getElementById('btn-top-streaks')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Score';
     renderLeaderboard();
 });
@@ -487,6 +531,7 @@ document.getElementById('btn-top-wins')?.addEventListener('click', () => {
     document.getElementById('btn-top-wins').classList.add('active');
     document.getElementById('btn-top-score').classList.remove('active');
     document.getElementById('btn-top-live')?.classList.remove('active');
+    document.getElementById('btn-top-streaks')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Victoires';
     renderLeaderboard();
 });
@@ -496,7 +541,19 @@ document.getElementById('btn-top-live')?.addEventListener('click', () => {
     document.getElementById('btn-top-live').classList.add('active');
     document.getElementById('btn-top-score').classList.remove('active');
     document.getElementById('btn-top-wins').classList.remove('active');
+    document.getElementById('btn-top-streaks')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Score du Live';
+    renderLeaderboard();
+});
+
+document.getElementById('btn-top-streaks')?.addEventListener('click', () => {
+    currentLeaderboardMode = 'streaks';
+    document.getElementById('btn-top-streaks').classList.add('active');
+    document.getElementById('btn-top-score').classList.remove('active');
+    document.getElementById('btn-top-wins').classList.remove('active');
+    document.getElementById('btn-top-live')?.classList.remove('active');
+    document.getElementById('btn-top-streaks')?.classList.remove('active');
+    document.getElementById('leaderboard-value-header').textContent = 'Record 🔥';
     renderLeaderboard();
 });
 
@@ -505,9 +562,9 @@ async function loadLeaderboard() {
         const res = await fetch('/api/leaderboard?t=' + Date.now());
         const data = await res.json();
         if (Array.isArray(data)) {
-            leaderboardData = { top_score: data, top_wins: [], top_live: [] };
+            leaderboardData = { top_score: data, top_wins: [], top_live: [], top_streaks: [] };
         } else {
-            leaderboardData = data || { top_score: [], top_wins: [], top_live: [] };
+            leaderboardData = data || { top_score: [], top_wins: [], top_live: [], top_streaks: [] };
         }
         renderLeaderboard();
     } catch (err) {
@@ -520,6 +577,7 @@ function renderLeaderboard() {
     let data = leaderboardData.top_score;
     if (currentLeaderboardMode === 'wins') data = leaderboardData.top_wins;
     if (currentLeaderboardMode === 'live') data = leaderboardData.top_live;
+    if (currentLeaderboardMode === 'streaks') data = leaderboardData.top_streaks;
     
     if (!data || data.length === 0) {
         leaderboardBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Aucun score pour le moment.</td></tr>';
@@ -529,12 +587,19 @@ function renderLeaderboard() {
     data.forEach((user, index) => {
         const tr = document.createElement('tr');
         
-        let pseudoDisplay = user.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
-        let pseudoClass = '';
+        let pseudoDisplay = user.pseudo;
+        if (user.streak && user.streak > 1) {
+            let level = 0;
+            if (user.streak >= 3 && user.streak <= 4) level = 1;
+            else if (user.streak >= 5 && user.streak <= 9) level = 2;
+            else if (user.streak >= 10) level = 3;
+            pseudoDisplay += ` <span class="streak-flame streak-level-${level}" title="Série : ${user.streak}">🔥${user.streak}</span>`;
+        }
+        let pseudoClass = user.font_family || '';
         let pseudoStyle = '';
         
         if (user.pseudo.toLowerCase() === 'aminat0_') {
-            pseudoClass = 'aminato-effect';
+            pseudoClass += ' aminato-effect';
         }
         
         if (user.color) {
@@ -550,6 +615,7 @@ function renderLeaderboard() {
         let val = `${user.score} pts`;
         if (currentLeaderboardMode === 'wins') val = `${user.wins} victoires`;
         if (currentLeaderboardMode === 'live') val = `${user.score_live} pts (Live)`;
+        if (currentLeaderboardMode === 'streaks') val = `🔥${user.max_streak}`;
         
         tr.innerHTML = `
             <td>#${index + 1}</td>
@@ -565,8 +631,8 @@ async function loadUserStats() {
     try {
         const res = await fetch('/api/user_stats', {
             headers: {
-                'pseudo': currentUser,
-                'password': currentPassword
+                'pseudo': encodeURIComponent(currentUser),
+                'password': encodeURIComponent(currentPassword)
             }
         });
         if (res.ok) {
@@ -722,7 +788,14 @@ async function loadAllPlayers() {
             const div = document.createElement('div');
             div.style = "background: var(--bg-secondary); padding: 10px 15px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1);";
             
-            let pseudoDisplay = u.pseudo.replace(/J4X/gi, '<span class="j4x-highlight">$&</span>');
+            let pseudoDisplay = u.pseudo;
+            if (u.streak && u.streak > 1) {
+                let level = 0;
+                if (u.streak >= 3 && u.streak <= 4) level = 1;
+                else if (u.streak >= 5 && u.streak <= 9) level = 2;
+                else if (u.streak >= 10) level = 3;
+                pseudoDisplay += ` <span class="streak-flame streak-level-${level}" title="Série : ${u.streak}">🔥${u.streak}</span>`;
+            }
             if (u.pseudo.toLowerCase() === 'aminat0_') {
                 div.classList.add('aminato-effect');
             }
@@ -772,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch('/api/rules/accept', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'pseudo': currentUser, 'password': currentPassword }
+                    headers: { 'Content-Type': 'application/json', 'pseudo': encodeURIComponent(currentUser), 'password': encodeURIComponent(currentPassword) }
                 });
                 if (res.ok) {
                     window.hasAcceptedRules = true;

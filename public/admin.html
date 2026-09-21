@@ -3,246 +3,254 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - Aminato Bingo</title>
-    <link rel="icon" type="image/jpeg" href="favicon.jpg">
-    <link rel="stylesheet" href="style.css?v=25">
-    
-    <style>
-        .admin-section {
-            display: none;
-        }
-        
-        .admin-controls {
-            margin: 20px 0;
-            padding: 15px;
-            background: #eef;
-            border-radius: 5px;
-            border: 1px solid #ccd;
-        }
-        
-        .admin-controls h3 { margin-top: 0; }
-        
-        .flex-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .danger-btn { background-color: #e74c3c; }
-        .danger-btn:hover { background-color: #c0392b; }
-        .warning-btn { background-color: #f39c12; }
-        .warning-btn:hover { background-color: #d68910; }
-        .success-btn { background-color: #2ecc71; }
-        .success-btn:hover { background-color: #27ae60; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        .small-btn { padding: 5px 10px; font-size: 0.8em; margin-right: 5px; }
-    </style>
+    <title>Panel Administrateur - Aminato Bingo</title>
+    <link rel="stylesheet" href="style.css?v=299">
+    <link rel="icon" type="image/png" href="favicon.png?v=299">
 </head>
-<body>
-    <header>
-        <h1>Panel Administrateur ⚙️</h1>
-        <div id="admin-info" class="hidden">
-            Connecté. <button id="logout-btn">Déconnexion</button>
-        </div>
-        <button id="theme-toggle" title="Basculer le thème">🌙</button>
-    </header>
+<body style="margin: 0; padding: 0;">
 
-    <main>
-        <section id="login-section">
-            <div class="auth-box">
-                <h2>Accès Restreint</h2>
-                <div class="input-group">
-                    <input type="password" id="admin-password" placeholder="Mot de passe admin" />
-                </div>
-                <button id="login-btn">Se connecter</button>
-                <div id="login-message" style="color:red; margin-top: 10px;"></div>
-            </div>
-        </section>
+    <div id="login-section" style="max-width: 400px; margin: 100px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
+        <img src="favicon.png?v=299" alt="Logo Admin" style="height:60px;width:60px;border-radius:50%;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+        <h2 style="margin-top: 0;">Connexion Admin</h2>
+        <input type="password" id="admin-password" placeholder="Mot de passe" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
+        <button id="login-btn" class="btn success-btn" style="width: 100%;">Se Connecter</button>
+        <p id="login-message" style="color: red; margin-top: 10px;"></p>
+    </div>
 
-        <section id="admin-content" class="admin-section">
+    <div id="admin-content" class="admin-layout hidden">
+        <aside class="admin-sidebar">
+            <h2>
+                <img src="favicon.png?v=299" alt="Logo" style="height:35px;width:35px;border-radius:50%;">
+                Admin Bingo
+                <img src="didier.png?v=299" alt="Didier" style="height:45px; margin-left:-15px; vertical-align:middle; object-fit:contain; object-position:top right; transform: scaleX(-1);">
+            </h2>
             
-            <div style="margin-bottom: 20px; display: flex; gap: 10px;">
-                <button id="nav-main-btn" class="success-btn" style="padding: 10px 20px; font-weight: bold; flex: 1;">Gestion du Jeu</button>
-                <button id="nav-stats-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Statistiques</button>
-                <button id="nav-accounts-btn" style="padding: 10px 20px; font-weight: bold; flex: 1; background-color: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer;">Comptes</button>
+            <div class="admin-nav">
+                <div class="admin-nav-item active" data-target="dashboard">🎮 Tableau de Bord</div>
+                <div class="admin-nav-item" data-target="users">👥 Joueurs & VIP</div>
+                <div class="admin-nav-item" data-target="profiles">📋 Profils de Jeu</div>
+                <div class="admin-nav-item" data-target="stats">📈 Statistiques</div>
+                <div class="admin-nav-item" data-target="settings">⚙️ Paramètres</div>
             </div>
             
-            <div class="admin-controls" style="background-color: #e3f2fd; border-color: #bbdefb; margin-top: 15px;">
-                <h3 style="color: #1565c0;">Outils Supplémentaires 🛠️</h3>
-                <p style="color: #0d47a1; margin-bottom: 15px;">Outils pratiques pour animer vos lives en direct.</p>
-                <a href="https://aminato.fr/bingo/roue.html?v=40" target="_blank" style="display: inline-block; padding: 10px 20px; background-color: #1976d2; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; transition: background-color 0.2s;">Ouvrir la Roue de la Fortune 🎡</a>
+            <div style="margin-top: auto; padding: 20px; text-align: center;">
+                <a href="/" style="color: #bdc3c7; text-decoration: none; font-size: 0.9em;">Retour au jeu</a>
             </div>
+        </aside>
 
-            <div id="main-admin-panel">
-            <div class="admin-controls">
-                <h3>Gestion du Live (Timer Global)</h3>
-                <p>État actuel : <strong id="game-status">Hors Ligne</strong> (<span id="timer-display">00:00</span>)</p>
-                <div class="flex-row">
-                    <label>Profil : <select id="profile-select"><option value="random">Aléatoire (BDD)</option></select></label>
-                    <label>Mode : <select id="verification-mode"><option value="strict">Strict (Admin valide)</option><option value="auto">Auto (Joueurs valident seuls)</option></select></label>
-                </div>
-                <div class="flex-row" style="margin-top:10px;">
-                    <input type="number" id="timer-duration" value="10" min="1" style="width: 80px;" title="Temps de jeu (minutes)"> min (Jeu) &nbsp;&nbsp;&nbsp;
-                    <input type="number" id="timer-lock-duration" value="2" min="0" style="width: 80px;" title="Temps de vérification (minutes)"> min (Vérif)
-                    <button id="start-game-btn">Lancer le Live</button>
-                    <button id="toggle-rules-btn" class="btn warning-btn" style="margin-left: 10px;">Activer Règlement: OFF</button>
-                    <button id="stop-game-btn" class="danger-btn">Arrêter le Live</button>
-                </div>
-            </div>
-
-            <div class="admin-controls" id="live-control-section" style="display:none; background:#d4edda;">
-                <h3>Contrôle du Live (Grille de l'Admin)</h3>
-                <p>Cochez les phrases au fur et à mesure que Aminato les réalise en live.</p>
-                <div id="admin-live-grid" class="bingo-grid" style="margin-top:10px;">
-                    <!-- Case a coché par JS -->
-                </div>
-            </div>
-
-            <div class="admin-controls">
-                <h3>Gestion des Phrases Bingo</h3>
-                <div class="flex-row" style="margin-bottom: 10px;">
-                    <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase..." style="flex:1;">
-                    <button id="add-phrase-btn">Ajouter phrase</button>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Phrase</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="phrases-table-body">
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="admin-controls">
-                <h3>Gestion des Profils de Grille</h3>
-                <p>Créez ou modifiez un profil en collant 16 phrases (une par ligne) ou via un fichier CSV.</p>
-                <div class="flex-row" style="margin-bottom: 10px; align-items: flex-start;">
-                    <div style="display:flex; flex-direction:column; gap:5px; flex:1;">
-                        <input type="text" id="new-profile-name" placeholder="Nom du Profil (ex: Soirée LoL)">
-                        <textarea id="new-profile-phrases" rows="6" placeholder="Collez ici vos phrases (une par ligne)..."></textarea>
-                        <input type="file" id="csv-upload" accept=".csv" style="font-size: 0.9em;">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:5px;">
-                        <button id="add-profile-btn" style="height: fit-content;">Sauvegarder Profil</button>
-                        <button id="cancel-edit-profile-btn" style="height: fit-content; display: none; background: #95a5a6;">Annuler Édition</button>
-                    </div>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nom</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="profiles-table-body">
-                    </tbody>
-                </table>
-            </div>
+        <main class="admin-main">
             
+            <!-- SECTION TABLEAU DE BORD (JEU) -->
+            <section id="dashboard" class="admin-section active">
+                <div class="admin-header">
+                    <h1>Tableau de Bord du Live</h1>
+                    <button id="logout-btn" class="btn warning-btn">Déconnexion</button>
+                </div>
 
-            </div> <!-- Fin Panel Admin Generale-->
-            
-            <div id="accounts-section" style="display: none;">
-            <div class="admin-controls">
-                <h3>Gestion des Utilisateurs</h3>
-                <button id="reset-rules-btn" class="btn warning-btn" style="margin-bottom:1rem;">Réinitialiser les signatures (Règlement)</button>
-                <div class="flex-row" style="margin-bottom: 10px;">
-                    <button id="reset-scores-btn" class="warning-btn">Réinitialiser tous les scores à 0</button>
+                <div class="admin-card" style="text-align: center; padding: 30px;">
+                    <h3>Gestion du Bingo</h3>
+                    <p style="color: #7f8c8d; margin-bottom: 25px;">Lancez ou arrêtez le jeu en temps réel pour tous les joueurs.</p>
                     
-                    <input type="text" id="new-user-pseudo" placeholder="Pseudo du nouveau joueur">
-                    <button id="create-user-btn">Créer le joueur</button>
-                </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Pseudo</th>
-                            <th>Mots de passe</th>
-                            <th>Score</th>
-                            <th>Points (+/-)</th>
-                            <th>Règlement</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table-body">
-                    </tbody>
-                </table>
-            </div>
+                    <div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-bottom: 20px;">
+                        <button id="start-game-btn" class="btn success-btn" style="font-size: 1.2rem; padding: 15px 30px;">Démarrer le Bingo</button>
+                        <button id="stop-game-btn" class="btn danger-btn hidden" style="font-size: 1.2rem; padding: 15px 30px;">Arrêter le Bingo</button>
+                    </div>
 
-            <div class="admin-controls" id="superadmin-section">
-                <h3>Gestion de l'Équipe & Sauvegardes (Superadmin uniquement)</h3>
-                
-                <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba; margin-bottom: 15px;">
-                    <h4 style="margin-top: 0; color: #856404;">Sauvegarde des données</h4>
-                    <p style="color: #856404; margin-bottom: 10px; font-size: 0.9em;">Téléchargez une copie complète des utilisateurs, scores et phrases pour prévenir toute perte de données.</p>
-                    <button id="backup-btn" class="success-btn" style="background-color: #28a745;">Télécharger la Sauvegarde (.json)</button>
+                    <div id="game-status" style="font-weight: bold; font-size: 1.1rem; padding: 10px; border-radius: 5px; background: #eee; display: inline-block; min-width: 200px;">Statut : Arrêté</div>
+                    
+                    <div style="margin-top: 30px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
+                        <label for="profile-select"><strong>Profil du jeu :</strong></label>
+                        <select id="profile-select" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="random">Générer aléatoirement</option>
+                        </select>
+                        <p style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Sélectionnez le lot de 16 phrases à utiliser pour ce live.</p>
+                    </div>
+
+                    <div style="margin-top: 20px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
+                        <label for="verification-mode"><strong>Mode de Validation :</strong></label>
+                        <select id="verification-mode" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="trust">Mode Confiance (Les joueurs valident eux-mêmes)</option>
+                            <option value="strict">Mode Stricte (Validation manuelle par l'admin)</option>
+                        </select>
+                    </div>
                 </div>
 
-                <p>Créer un compte vous permet d'ajouter d'autres modérateurs.</p>
-                <div class="flex-row" style="margin-bottom: 10px;">
-                    <input type="text" id="new-admin-password" placeholder="Nouveau mot de passe admin...">
-                    <button id="create-admin-btn" class="success-btn">Créer ce compte admin</button>
+                <div id="live-validation-section" class="admin-card hidden">
+                    <h3>Validation Stricte en cours</h3>
+                    <p>Cochez les phrases qui ont été réellement dites pendant le live :</p>
+                    <div id="admin-grid" class="bingo-grid" style="pointer-events: auto;">
+                        <!-- Grille pour validation admin -->
+                    </div>
                 </div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Mot de passe</th>
-                            <th>Rôle</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admins-table-body">
-                    </tbody>
-                </table>
-            </div>
-            </div> <!-- fin section compte  -->
-            
-            <div id="stats-section" style="display: none;" class="admin-controls">
-                <h3>Statistiques Globales</h3>
-                <p style="color: #666; margin-bottom: 20px;">Vue d'ensemble des meilleurs joueurs et des phrases les plus souvent validées lors des lives.</p>
-                
+            </section>
+
+            <!-- SECTION JOUEURS -->
+            <section id="users" class="admin-section">
+                <div class="admin-header">
+                    <h1>Gestion des Joueurs & VIP</h1>
+                </div>
+
+                <div class="admin-card">
+                    <h3>Création Rapide</h3>
+                    <div class="flex-row" style="margin-bottom: 10px; gap: 10px;">
+                        <input type="text" id="new-user-pseudo" placeholder="Pseudo du nouveau joueur" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <button id="create-user-btn" class="btn success-btn">Créer le joueur</button>
+                    </div>
+                </div>
+
+                <div class="admin-card" style="background-color: #fdfbf7; border: 1px dashed #d4c4a8;">
+                    <h3>Ajouter de nouvelles Polices (ZIP/TTF)</h3>
+                    <p style="color: #7f8c8d; font-size: 0.9em;">Envoyez un fichier .zip contenant des polices, ou un fichier .ttf/.woff directement.</p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" id="font-upload-input" accept=".zip,.ttf,.otf,.woff,.woff2" style="flex: 1; padding: 10px; background: white; border-radius: 4px; border: 1px solid #ccc;">
+                        <button id="upload-font-btn" class="btn success-btn" style="background-color: #8e44ad;">Importer la Police</button>
+                    </div>
+                    <p id="font-upload-status" style="margin-top: 10px; font-weight: bold;"></p>
+                </div>
+
+                <div class="admin-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3>Liste des Joueurs</h3>
+                        <button id="reset-scores-btn" class="btn warning-btn">Réinitialiser tous les scores</button>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 15px;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                    <th style="padding: 10px;">Pseudo (Prévisualisation)</th>
+                                    <th style="padding: 10px;">Mots de passe</th>
+                                    <th style="padding: 10px;">Score</th>
+                                    <th style="padding: 10px;">Police Spéciale (VIP)</th>
+                                    <th style="padding: 10px;">Points</th>
+                                    <th style="padding: 10px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION PROFILS -->
+            <section id="profiles" class="admin-section">
+                <div class="admin-header">
+                    <h1>Profils de Jeu</h1>
+                </div>
+
+                <div class="admin-card">
+                    <h3>Gérer les Profils</h3>
+                    <p style="color: #7f8c8d; margin-bottom: 20px;">Un profil contient 16 phrases prédéfinies pour un thème ou un jeu spécifique.</p>
+                    
+                    <div style="display: flex; gap: 20px; align-items: flex-start;">
+                        <div style="flex: 1; display:flex; flex-direction:column; gap:10px;">
+                            <input type="text" id="profile-name" placeholder="Nom du profil (ex: Épisode 4)" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                            <textarea id="profile-phrases" placeholder="Collez ici les 16 phrases (une par ligne)..." rows="8" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="add-profile-btn" class="btn success-btn" style="flex: 1;">Sauvegarder Profil</button>
+                                <button id="cancel-edit-profile-btn" class="btn" style="display: none; background: #95a5a6; color: white;">Annuler</button>
+                            </div>
+                        </div>
+
+                        <div style="flex: 1; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px dashed #ccc; text-align: center;">
+                            <h4 style="margin-top: 0; color: #2c3e50;">Importation de masse</h4>
+                            <p style="font-size: 0.9em; color: #666;">Importez plusieurs profils d'un coup via un fichier CSV.</p>
+                            <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                            <button id="import-csv-btn" class="btn" style="background: #3498db; color: white; width: 100%; margin-bottom: 10px;">Choisir un fichier CSV</button>
+                            <a href="template_profils.csv" download style="font-size: 0.85em; color: #2980b9; text-decoration: underline;">Télécharger le modèle CSV</a>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 30px;">
+                        <thead>
+                            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 10px;">Nom du Profil</th>
+                                <th style="padding: 10px; width: 100px; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profiles-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECTION STATS -->
+            <section id="stats" class="admin-section">
+                <div class="admin-header">
+                    <h1>Statistiques Globales</h1>
+                </div>
+
                 <div style="display: flex; gap: 20px;">
-                    <div style="flex: 1; background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px;">
-                        <h4 style="margin-top: 0; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px;">Top Joueurs</h4>
-                        <div id="stats-users-container">
-                            <!-- partie javascripr-->
+                    <div class="admin-card" style="flex: 1;">
+                        <h3 style="border-bottom-color: #3498db;">Top Joueurs</h3>
+                        <div id="stats-users-container"></div>
+                    </div>
+                    
+                    <div class="admin-card" style="flex: 1;">
+                        <h3 style="border-bottom-color: #2ecc71;">Top Phrases Réalisées</h3>
+                        <div id="stats-phrases-container"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION PARAMETRES -->
+            <section id="settings" class="admin-section">
+                <div class="admin-header">
+                    <h1>Paramètres & Sécurité</h1>
+                </div>
+
+                <div class="admin-card" style="background-color: #fff9e6; border-left: 5px solid #f1c40f;">
+                    <h3 style="color: #d35400;">Règlement Spécial</h3>
+                    <p style="color: #7f8c8d;">Oblige les joueurs à accepter le règlement avant de jouer.</p>
+                    
+                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 15px;">
+                        <button id="toggle-rules-btn" class="btn warning-btn">Activer Règlement: OFF</button>
+                        <button id="reset-rules-btn" class="btn danger-btn">Réinitialiser les signatures</button>
+                    </div>
+                </div>
+
+                <div class="admin-card" id="superadmin-section">
+                    <h3>Gestion de l'Équipe & Sauvegardes (Superadmin)</h3>
+                    
+                    <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+                        <div style="flex: 1;">
+                            <p style="font-weight: bold; margin-top: 0;">Ajouter un Administrateur</p>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="new-admin-password" placeholder="Mot de passe admin..." style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                                <button id="create-admin-btn" class="btn success-btn">Créer</button>
+                            </div>
+                        </div>
+                        
+                        <div style="flex: 1; text-align: right;">
+                            <p style="font-weight: bold; margin-top: 0;">Sauvegarde BDD</p>
+                            <button id="backup-btn" class="btn success-btn" style="background-color: #27ae60;">⬇️ Télécharger la Sauvegarde (.json)</button>
                         </div>
                     </div>
                     
-                    <div style="flex: 1; background: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 15px;">
-                        <h4 style="margin-top: 0; color: #2c3e50; border-bottom: 2px solid #2ecc71; padding-bottom: 5px;">Top Phrases Réalisées</h4>
-                        <div id="stats-phrases-container">
-                            <!-- partie Javascript-->
-                        </div>
-                    </div>
+                    <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 10px;">Mot de passe</th>
+                                <th style="padding: 10px;">Rôle</th>
+                                <th style="padding: 10px; width: 100px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admins-table-body">
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            </section>
 
-        </section>
-    </main>
+        </main>
+    </div>
 
-    <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: #666; font-size: 0.9rem;">
-        v1.0.0.42
-    </footer>
-
-    <!-- Importateur CSV-->
+    <!-- Importateur CSV Modal -->
     <div id="csv-preview-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 20px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+        <div style="background: white; padding: 30px; border-radius: 8px; width: 80%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
             <h2 style="margin-top: 0;">Prévisualisation de l'import CSV</h2>
-            <p>Voici les profils trouvés dans votre fichier. Vérifiez qu'il n'y a pas d'erreur.</p>
-            <div id="csv-preview-content" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+            <p style="color: #666;">Voici les profils trouvés. Vérifiez qu'il n'y a pas d'erreur.</p>
+            <div id="csv-preview-content" style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 25px; margin-top: 20px;">
                 <!-- Javascript CSV-->
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
@@ -252,6 +260,6 @@
         </div>
     </div>
 
-    <script src="admin.js?v=34"></script>
+    <script src="admin.js?v=299"></script>
 </body>
 </html>

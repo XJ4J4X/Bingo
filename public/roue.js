@@ -22,6 +22,7 @@ const colors = [
 ];
 
 function init() {
+    loadProfileSelect();
     // Persistence
     const savedPhrases = localStorage.getItem('bingo_wheel_phrases');
     if (savedPhrases) {
@@ -185,5 +186,105 @@ function showWinner() {
     }
 }
 
-// Initialize
+
+
+// --- PROFILE MANAGEMENT ---
+const profileSelect = document.getElementById('wheel-profile-select');
+const btnSaveProfile = document.getElementById('btn-save-profile');
+const btnDeleteProfile = document.getElementById('btn-delete-profile');
+
+function getWheelProfiles() {
+    const data = localStorage.getItem('bingo_wheel_profiles');
+    if(data) {
+        try { return JSON.parse(data); } catch(e) {}
+    }
+    return {};
+}
+
+function saveWheelProfiles(profiles) {
+    localStorage.setItem('bingo_wheel_profiles', JSON.stringify(profiles));
+}
+
+function loadProfileSelect() {
+    if(!profileSelect) return;
+    const profiles = getWheelProfiles();
+    
+    // Clear existing options except default
+    while (profileSelect.options.length > 1) {
+        profileSelect.remove(1);
+    }
+    
+    for(const name in profiles) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        opt.style.color = '#000';
+        profileSelect.appendChild(opt);
+    }
+    
+    // Select the last active profile if any
+    const active = localStorage.getItem('bingo_wheel_active_profile');
+    if (active && profiles[active]) {
+        profileSelect.value = active;
+    }
+}
+
+if(profileSelect) {
+    profileSelect.addEventListener('change', () => {
+        const val = profileSelect.value;
+        if (val === 'default') {
+            // Do not override automatically, just let them see what they typed, or reset?
+            // Actually, let's load default if we saved it in 'bingo_wheel_phrases'
+            inputPhrases.value = localStorage.getItem('bingo_wheel_phrases') || "";
+        } else {
+            const profiles = getWheelProfiles();
+            if(profiles[val]) {
+                inputPhrases.value = profiles[val];
+            }
+        }
+        localStorage.setItem('bingo_wheel_active_profile', val);
+        updateWheel();
+    });
+}
+
+if(btnSaveProfile) {
+    btnSaveProfile.addEventListener('click', () => {
+        const currentVal = profileSelect.value;
+        let name = currentVal !== 'default' ? currentVal : '';
+        name = prompt("Nom du profil :", name);
+        if(!name || name.trim() === '') return;
+        name = name.trim();
+        
+        const profiles = getWheelProfiles();
+        profiles[name] = inputPhrases.value;
+        saveWheelProfiles(profiles);
+        
+        loadProfileSelect();
+        profileSelect.value = name;
+        localStorage.setItem('bingo_wheel_active_profile', name);
+    });
+}
+
+if(btnDeleteProfile) {
+    btnDeleteProfile.addEventListener('click', () => {
+        const val = profileSelect.value;
+        if(val === 'default') {
+            alert("Impossible de supprimer le profil par défaut.");
+            return;
+        }
+        if(confirm("Supprimer le profil '" + val + "' ?")) {
+            const profiles = getWheelProfiles();
+            delete profiles[val];
+            saveWheelProfiles(profiles);
+            
+            loadProfileSelect();
+            profileSelect.value = 'default';
+            localStorage.setItem('bingo_wheel_active_profile', 'default');
+            inputPhrases.value = localStorage.getItem('bingo_wheel_phrases') || "";
+            updateWheel();
+        }
+    });
+}
+
+// Initialize at the end after all consts
 init();
