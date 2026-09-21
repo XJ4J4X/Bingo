@@ -4,25 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Administrateur - Aminato Bingo</title>
-    <link rel="stylesheet" href="style.css?v=299">
-    <link rel="icon" type="image/png" href="favicon.png?v=299">
+    <link rel="stylesheet" href="style.css?v=2500">
+    <link rel="icon" type="image/png" href="favicon.png?v=800">
 </head>
 <body style="margin: 0; padding: 0;">
 
     <div id="login-section" style="max-width: 400px; margin: 100px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center;">
-        <img src="favicon.png?v=299" alt="Logo Admin" style="height:60px;width:60px;border-radius:50%;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+        <img src="favicon.png?v=800" alt="Logo Admin" style="height:60px;width:60px;border-radius:50%;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);">
         <h2 style="margin-top: 0;">Connexion Admin</h2>
         <input type="password" id="admin-password" placeholder="Mot de passe" style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;">
         <button id="login-btn" class="btn success-btn" style="width: 100%;">Se Connecter</button>
         <p id="login-message" style="color: red; margin-top: 10px;"></p>
     </div>
 
+    
     <div id="admin-content" class="admin-layout hidden">
+        <!-- Elements cachés pour compatibilité admin.js -->
+        <div style="display:none;">
+            <div id="admin-info"></div>
+                                    <button id="add-phrase-btn"></button>
+            <input id="new-phrase-input">
+            <table id="phrases-table-body"></table>
+        </div>
         <aside class="admin-sidebar">
             <h2>
-                <img src="favicon.png?v=299" alt="Logo" style="height:35px;width:35px;border-radius:50%;">
+                <img src="favicon.png?v=800" alt="Logo" style="height:35px;width:35px;border-radius:50%;">
                 Admin Bingo
-                <img src="didier.png?v=299" alt="Didier" style="height:45px; margin-left:-15px; vertical-align:middle; object-fit:contain; object-position:top right; transform: scaleX(-1);">
+                <img src="didier.png?v=800" alt="Didier" style="height:45px; margin-left:-15px; vertical-align:middle; object-fit:contain; object-position:top right; transform: scaleX(-1);">
             </h2>
             
             <div class="admin-nav">
@@ -34,6 +42,8 @@
             </div>
             
             <div style="margin-top: auto; padding: 20px; text-align: center;">
+                <button id="admin-theme-toggle" class="btn" style="width: 100%; margin-bottom: 10px; background-color: #34495e; color: white;">🌙 Mode Sombre</button>
+                <button id="logout-btn" class="btn warning-btn" style="width: 100%; margin-bottom: 15px;">Déconnexion</button>
                 <a href="/" style="color: #bdc3c7; text-decoration: none; font-size: 0.9em;">Retour au jeu</a>
             </div>
         </aside>
@@ -43,19 +53,31 @@
             <!-- SECTION TABLEAU DE BORD (JEU) -->
             <section id="dashboard" class="admin-section active">
                 <div class="admin-header">
-                    <h1>Tableau de Bord du Live</h1>
-                    <button id="logout-btn" class="btn warning-btn">Déconnexion</button>
+                    <h1 id="admin-greeting">Tableau de Bord du Live</h1>
+                    
                 </div>
 
                 <div class="admin-card" style="text-align: center; padding: 30px;">
                     <h3>Gestion du Bingo</h3>
                     <p style="color: #7f8c8d; margin-bottom: 25px;">Lancez ou arrêtez le jeu en temps réel pour tous les joueurs.</p>
                     
-                    <div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-bottom: 20px;">
+                    
+                    <div style="display: flex; justify-content: center; gap: 20px; max-width: 500px; margin: 0 auto 20px auto; text-align: left;">
+                        <div style="flex: 1;">
+                            <label for="timer-duration"><strong>Temps de jeu (min) :</strong></label>
+                            <input type="number" id="timer-duration" value="30" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="timer-lock-duration"><strong>Temps de vérif. (min) :</strong></label>
+                            <input type="number" id="timer-lock-duration" value="5" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                    </div>
+<div style="display: flex; justify-content: center; gap: 15px; align-items: center; margin-bottom: 20px;">
                         <button id="start-game-btn" class="btn success-btn" style="font-size: 1.2rem; padding: 15px 30px;">Démarrer le Bingo</button>
                         <button id="stop-game-btn" class="btn danger-btn hidden" style="font-size: 1.2rem; padding: 15px 30px;">Arrêter le Bingo</button>
                     </div>
 
+                    <div style="margin-bottom: 10px; font-size: 1.5rem; font-weight: bold;"><span id="timer-display">00:00</span></div>
                     <div id="game-status" style="font-weight: bold; font-size: 1.1rem; padding: 10px; border-radius: 5px; background: #eee; display: inline-block; min-width: 200px;">Statut : Arrêté</div>
                     
                     <div style="margin-top: 30px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
@@ -75,10 +97,10 @@
                     </div>
                 </div>
 
-                <div id="live-validation-section" class="admin-card hidden">
+                <div id="live-control-section" class="admin-card hidden">
                     <h3>Validation Stricte en cours</h3>
                     <p>Cochez les phrases qui ont été réellement dites pendant le live :</p>
-                    <div id="admin-grid" class="bingo-grid" style="pointer-events: auto;">
+                    <div id="admin-live-grid" class="bingo-grid" style="pointer-events: auto;">
                         <!-- Grille pour validation admin -->
                     </div>
                 </div>
@@ -242,6 +264,10 @@
                 </div>
             </section>
 
+
+    <div style="text-align: center; padding: 20px; font-size: 0.9em; color: #7f8c8d; margin-top: 40px; border-top: 1px solid rgba(0,0,0,0.1);">
+        Fait avec amour par J4X ❤️ - Version 2.0.0
+    </div>
         </main>
     </div>
 
@@ -260,6 +286,6 @@
         </div>
     </div>
 
-    <script src="admin.js?v=299"></script>
+    <script src="admin.js?v=1600"></script>
 </body>
 </html>

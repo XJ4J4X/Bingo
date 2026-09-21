@@ -27,6 +27,7 @@ const loginMessage = document.getElementById('login-message');
 const startGameBtn = document.getElementById('start-game-btn');
 const stopGameBtn = document.getElementById('stop-game-btn');
 const timerDurationInput = document.getElementById('timer-duration');
+const timerLockDurationInput = document.getElementById('timer-lock-duration');
 const gameStatus = document.getElementById('game-status');
 const timerDisplay = document.getElementById('timer-display');
 
@@ -60,8 +61,8 @@ loginBtn.addEventListener('click', async () => {
             localStorage.setItem('adminToken', adminToken);
             localStorage.setItem('adminRole', adminRole);
             loginSection.style.display = 'none';
-            adminContent.style.display = 'block';
-            adminInfo.classList.remove('hidden');
+            adminContent.style.display = 'flex'; adminContent.classList.remove('hidden');
+            if(adminInfo) adminInfo.classList.remove('hidden');
             initAdmin();
         } else {
             loginMessage.textContent = "Mot de passe incorrect.";
@@ -95,7 +96,22 @@ async function fetchWithAuth(url, options = {}) {
     return res;
 }
 
-function initAdmin() {
+async function initAdmin() {
+
+    const hour = new Date().getHours();
+    let greeting = 'Bonjour';
+    if (hour >= 5 && hour < 12) greeting = 'Bon matin';
+    else if (hour >= 12 && hour < 18) greeting = 'Bonjour';
+    else if (hour >= 18 && hour < 22) greeting = 'Bonsoir';
+    else greeting = 'Bon stream';
+    
+    const roleName = adminRole === 'superadmin' ? 'Boss' : 'Admin';
+    const greetingEl = document.getElementById('admin-greeting');
+    if (greetingEl) {
+        greetingEl.textContent = `${greeting}, ${roleName} 👑 👻`;
+    }
+
+    await loadCustomFonts();
     loadUsers();
     loadPhrases();
     loadProfiles();
@@ -120,8 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
         adminToken = savedToken;
         adminRole = savedRole;
         loginSection.style.display = 'none';
-        adminContent.style.display = 'block';
-        adminInfo.classList.remove('hidden');
+        adminContent.style.display = 'flex'; adminContent.classList.remove('hidden');
+        if(adminInfo) adminInfo.classList.remove('hidden');
         initAdmin();
     }
 });
@@ -162,13 +178,13 @@ async function syncGameState() {
                 document.getElementById('stop-game-btn').className = "danger-btn";
             }
             timerDisplay.textContent = formatTime(data.time_left);
-            document.getElementById('live-control-section').style.display = 'block';
+            const lcs = document.getElementById('live-control-section'); if(lcs) { lcs.style.display = 'block'; lcs.classList.remove('hidden'); }
             loadLiveData();
         } else {
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
             timerDisplay.textContent = "00:00";
-            document.getElementById('live-control-section').style.display = 'none';
+            const lcs2 = document.getElementById('live-control-section'); if(lcs2) { lcs2.style.display = 'none'; lcs2.classList.add('hidden'); }
             document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
             document.getElementById('stop-game-btn').className = "danger-btn";
         }
@@ -184,7 +200,7 @@ async function loadLiveData() {
         if (!res.ok) return;
         const data = await res.json();
         
-        const grid = document.getElementById('admin-live-grid');
+        const grid = (document.getElementById('admin-live-grid')||{});
         
         // If empty, create the grid cells
         if (grid.children.length === 0) {
@@ -231,7 +247,7 @@ window.toggleTick = async function(phrase, isChecked) {
 };
 
 
-startGameBtn.addEventListener('click', async () => {
+if(startGameBtn) startGameBtn.addEventListener('click', async () => {
     const durationMins = parseInt(timerDurationInput.value, 10) || 10;
     const durationSecs = durationMins * 60;
     
@@ -255,7 +271,7 @@ startGameBtn.addEventListener('click', async () => {
     syncGameState();
 });
 
-stopGameBtn.addEventListener('click', async () => {
+if(stopGameBtn) stopGameBtn.addEventListener('click', async () => {
     await fetchWithAuth('/api/admin/game/stop', { method: 'POST' });
     syncGameState();
 });
@@ -382,14 +398,14 @@ async function loadUsers() {
     } catch (e) { console.error(e); }
 }
 
-resetScoresBtn.addEventListener('click', async () => {
+if(resetScoresBtn) resetScoresBtn.addEventListener('click', async () => {
     if (confirm('Remettre tous les scores à 0 pour le prochain Live ?')) {
         await fetchWithAuth('/api/admin/users/reset', { method: 'POST' });
         loadUsers();
     }
 });
 
-createUserBtn.addEventListener('click', async () => {
+if(createUserBtn) createUserBtn.addEventListener('click', async () => {
     const pseudo = newUserPseudoInput.value.trim();
     if (pseudo) {
         const res = await fetch('/api/register', {
@@ -439,7 +455,7 @@ async function loadPhrases() {
     } catch (e) { console.error(e); }
 }
 
-addPhraseBtn.addEventListener('click', async () => {
+if(addPhraseBtn) addPhraseBtn.addEventListener('click', async () => {
     const phrase = newPhraseInput.value.trim();
     if (phrase) {
         await fetchWithAuth('/api/admin/phrases/add', {
@@ -452,7 +468,7 @@ addPhraseBtn.addEventListener('click', async () => {
     }
 });
 
-createAdminBtn.addEventListener('click', async () => {
+if(createAdminBtn) createAdminBtn.addEventListener('click', async () => {
     const newPwd = newAdminPasswordInput.value.trim();
     if (newPwd) {
         if (confirm("Voulez-vous créer ce nouveau mot de passe admin ?")) {
@@ -765,28 +781,7 @@ if (backupBtn) {
     });
 }
 
-// Theme toggle logic
-document.addEventListener('DOMContentLoaded', () => {
-    const themeBtn = document.getElementById('theme-toggle');
-    const currentTheme = localStorage.getItem('theme');
-    if (currentTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (themeBtn) themeBtn.textContent = '☀️';
-    }
-    
-    if (themeBtn) {
-        themeBtn.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            if (document.body.classList.contains('dark-mode')) {
-                localStorage.setItem('theme', 'dark');
-                themeBtn.textContent = '☀️';
-            } else {
-                localStorage.setItem('theme', 'light');
-                themeBtn.textContent = '🌙';
-            }
-        });
-    }
-});
+
 
 // --- TABS LOGIC ---
 const navMainBtn = document.getElementById('nav-main-btn');
@@ -1087,7 +1082,7 @@ document.getElementById('upload-font-btn')?.addEventListener('click', async () =
                 loadUsers();
             }
         } else {
-            status.textContent = 'Erreur lors de l'upload.';
+            status.textContent = "Erreur lors de l'upload.";
             status.style.color = 'red';
         }
     } catch (e) {
@@ -1098,3 +1093,26 @@ document.getElementById('upload-font-btn')?.addEventListener('click', async () =
 
 // Appel initial
 loadCustomFonts();
+
+// Admin Theme toggle logic
+document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('admin-theme-toggle');
+    const currentTheme = localStorage.getItem('admin_theme');
+    if (currentTheme === 'dark') {
+        document.body.classList.add('admin-dark-mode');
+        if (themeBtn) themeBtn.textContent = '☀️ Mode Clair';
+    }
+    
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            document.body.classList.toggle('admin-dark-mode');
+            if (document.body.classList.contains('admin-dark-mode')) {
+                localStorage.setItem('admin_theme', 'dark');
+                themeBtn.textContent = '☀️ Mode Clair';
+            } else {
+                localStorage.setItem('admin_theme', 'light');
+                themeBtn.textContent = '🌙 Mode Sombre';
+            }
+        });
+    }
+});
