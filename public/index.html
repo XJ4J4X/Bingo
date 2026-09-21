@@ -4,13 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aminato Bingo</title>
+    <title>Le Bingo du Manoir</title>
     <link rel="icon" type="image/png" href="favicon.png?v=300">
-    <link rel="stylesheet" href="style.css?v=800">
+    <link rel="stylesheet" href="style.css?v=4100">
 </head>
-<body>
+<body class="player-page">
     <header>
-        <h1><img src="favicon.png" alt="Logo Aminato" class="title-logo" style="height:45px;width:45px;border-radius:50%;margin-right:15px;vertical-align:middle;box-shadow:0 4px 10px rgba(0,0,0,0.3);" >Aminato Bingo <img src="didier.png?v=300" alt="Didier" style="transform: scaleX(-1); height:55px; margin-left:-15px; vertical-align:middle; object-fit:contain; object-position:top right;"></h1>
+        <h1><img src="favicon.png" alt="Logo Aminato" class="title-logo" style="height:45px;width:45px;border-radius:50%;margin-right:15px;vertical-align:middle;box-shadow:0 4px 10px rgba(0,0,0,0.3);" >Le Bingo du Manoir <img src="didier.png?v=300" alt="Didier" style="transform: scaleX(-1); height:55px; margin-left:-15px; vertical-align:middle; object-fit:contain; object-position:top right;"></h1>
         
         <div id="user-info" class="hidden">
             Connecté en tant que: <span id="current-pseudo"></span>
@@ -110,7 +110,8 @@
                 <button id="btn-top-live">Points du Live</button>
                 <button id="btn-top-streaks">Records 🔥</button>
             </div>
-            <table id="leaderboard-table">
+            <div class="table-responsive" style="overflow-x: auto; width: 100%;">
+                <table id="leaderboard-table">
                 <thead>
                     <tr>
                         <th>Rang</th>
@@ -121,6 +122,7 @@
                 <tbody id="leaderboard-body">
                 </tbody>
             </table>
+            </div>
         </section>
         <section id="color-picker-section" class="hidden" style="margin-bottom: 20px; text-align: center; background: #fff3cd; padding: 15px; border-radius: 8px;">
             <h3 style="color: #856404; margin-top: 0;">🎉 Bravo ! Choisissez la couleur de votre pseudo :</h3>
@@ -130,9 +132,7 @@
             </div>
     </main>
     
-    <footer style="text-align: center; margin-top: 2rem; padding: 1rem; color: var(--text-muted); font-size: 0.9rem;">
-        v1.0.0.50
-    </footer>
+    
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <!-- Modal Règlement Spécial -->
@@ -212,6 +212,6 @@
         Fait avec amour par J4X ❤️ - Version 2.0.0
     </div>
 
-    <script src="app.js?v=400"></script>
+    <script src="app.js?v=4100"></script>
 </body>
 </html>

@@ -185,8 +185,8 @@ body.dark-mode {
     color: #e0e0e0;
 }
 body.dark-mode header {
-    background-color: #1f1f1f;
-    border-bottom: 1px solid #333;
+    background-color: #2c3e50;
+    border-bottom: 1px solid #1a252f;
 }
 body.dark-mode section {
     background-color: #1e1e1e;
@@ -338,9 +338,9 @@ body.dark-mode #password-display {
 }
 
 .leaderboard-tabs button {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: var(--text-color);
+    background: #e5e5ea;
+    border: none;
+    color: #2c3e50;
     padding: 8px 16px;
     border-radius: 20px;
     cursor: pointer;
@@ -349,14 +349,14 @@ body.dark-mode #password-display {
 }
 
 .leaderboard-tabs button.active {
-    background: var(--primary-color);
+    background: #3498db;
     color: white;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+    border: none;
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
 }
 
 .leaderboard-tabs button:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.2);
+    background: #d1d1d6;
 }
 
 
@@ -689,4 +689,278 @@ html:has(#admin-content) {
 }
 html:has(#admin-content):has(body.admin-dark-mode) {
     background-color: #1a1b1e !important;
+}
+
+/* ====== TWITCH / FLAT DESIGN (PLAYER SIDE ONLY) ====== */
+body.player-page {
+    font-family: 'Inter', sans-serif !important;
+    background-color: #f0f2f5 !important;
+    color: #2c3e50 !important;
+    background-image: none !important;
+}
+
+/* Base Light Theme Cards */
+body.player-page .auth-box, 
+body.player-page #leaderboard-section, 
+body.player-page #stats-section, 
+body.player-page #players-section, 
+body.player-page .player-card, 
+body.player-page #rules-modal > div {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e5ea !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+    color: #2c3e50 !important;
+}
+
+body.player-page .container h1, 
+body.player-page .container h2, 
+body.player-page h3, 
+body.player-page h4 {
+    color: #2c3e50 !important;
+}
+
+/* Light Inputs */
+body.player-page input[type="text"], 
+body.player-page input[type="password"] {
+    background-color: #ffffff !important;
+    border: 2px solid #e5e5ea !important;
+    color: #2c3e50 !important;
+    border-radius: 4px !important;
+    transition: border-color 0.2s ease !important;
+}
+body.player-page input[type="text"]:focus, 
+body.player-page input[type="password"]:focus {
+    outline: none !important;
+    border-color: #3498db !important;
+    background-color: #ffffff !important;
+}
+
+/* Purple Buttons */
+body.player-page .btn {
+    background-color: #3498db !important;
+    border: none !important;
+    border-radius: 4px !important;
+    color: white !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s ease !important;
+}
+body.player-page .btn:hover {
+    background-color: #2980b9 !important;
+}
+
+/* Grid Light */
+body.player-page .grid, 
+body.player-page #bingo-grid {
+    gap: 10px !important;
+}
+body.player-page .bingo-cell {
+    background-color: #ffffff !important;
+    border: 2px solid #e5e5ea !important;
+    border-radius: 6px !important;
+    color: #2c3e50 !important;
+    transition: all 0.1s ease !important;
+}
+body.player-page .bingo-cell:hover:not(.checked) {
+    background-color: #f7f9fa !important;
+    border-color: #d1d1d6 !important;
+}
+body.player-page .bingo-cell.checked {
+    background-color: #3498db !important;
+    color: white !important;
+    border-color: #3498db !important;
+}
+
+/* Header Light */
+body.player-page .header {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e5ea !important;
+    border-radius: 6px !important;
+    color: #2c3e50 !important;
+}
+body.player-page #user-name {
+    color: #3498db !important;
+}
+
+/* Table Light */
+body.player-page th {
+    background-color: #f7f9fa !important;
+    color: #53535f !important;
+    border-bottom: 2px solid #e5e5ea !important;
+}
+body.player-page td {
+    background-color: transparent !important;
+    border-bottom: 1px solid #e5e5ea !important;
+}
+body.player-page tr:hover td {
+    background-color: #f7f9fa !important;
+}
+
+/* Theme Toggle Button (Restore) */
+body.player-page #theme-toggle {
+    display: inline-block !important; /* Restored */
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.1) !important;
+    color: #2c3e50 !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ========================================= */
+/* DARK MODE (TWITCH) - Active when .dark-mode */
+/* ========================================= */
+body.player-page.dark-mode {
+    background-color: #1a1b1e !important;
+    color: #efeff1 !important;
+}
+
+/* Dark Sections */
+body.player-page.dark-mode .auth-box, 
+body.player-page.dark-mode #leaderboard-section, 
+body.player-page.dark-mode #stats-section, 
+body.player-page.dark-mode #players-section, 
+body.player-page.dark-mode .player-card, 
+body.player-page.dark-mode #rules-modal > div {
+    background-color: #25262b !important;
+    border: 1px solid #2f2f35 !important;
+    color: #efeff1 !important;
+}
+
+body.player-page.dark-mode .container h1, 
+body.player-page.dark-mode .container h2, 
+body.player-page.dark-mode h3, 
+body.player-page.dark-mode h4 {
+    color: #efeff1 !important;
+}
+
+/* Dark Inputs */
+body.player-page.dark-mode input[type="text"], 
+body.player-page.dark-mode input[type="password"] {
+    background-color: #1a1b1e !important;
+    border: 2px solid #3a3a3d !important;
+    color: #efeff1 !important;
+}
+body.player-page.dark-mode input[type="text"]:focus, 
+body.player-page.dark-mode input[type="password"]:focus {
+    background-color: #000000 !important;
+}
+
+/* Dark Grid */
+body.player-page.dark-mode .bingo-cell {
+    background-color: #2c2e33 !important;
+    border: 2px solid #3a3a3d !important;
+    color: #efeff1 !important;
+}
+body.player-page.dark-mode .bingo-cell:hover:not(.checked) {
+    background-color: #26262c !important;
+    border-color: #555558 !important;
+}
+
+/* Dark Header */
+body.player-page.dark-mode .header {
+    background-color: #2c2e33 !important;
+    border: 1px solid #3a3a3d !important;
+    color: #efeff1 !important;
+}
+body.player-page.dark-mode #user-name {
+    color: #3498db !important;
+}
+
+/* Dark Table */
+body.player-page.dark-mode th {
+    background-color: #1a1b1e !important;
+    color: #adadb8 !important;
+    border-bottom: 2px solid #3a3a3d !important;
+}
+body.player-page.dark-mode td {
+    border-bottom: 1px solid #2f2f35 !important;
+    color: #efeff1 !important;
+}
+body.player-page.dark-mode tr:hover td {
+    background-color: #26262c !important;
+}
+
+body.player-page.dark-mode #theme-toggle {
+    background: rgba(255,255,255,0.1) !important;
+    color: #efeff1 !important;
+}
+
+/* Mobile Optimization */
+@media (max-width: 600px) {
+    body.player-page .auth-box {
+        margin: 20px auto !important;
+        padding: 20px !important;
+        width: 95% !important;
+        box-sizing: border-box !important;
+    }
+    
+    body.player-page .container {
+        padding: 15px !important;
+        margin-top: 15px !important;
+        margin-bottom: 15px !important;
+        width: 95% !important;
+        box-sizing: border-box !important;
+    }
+
+    body.player-page .grid, 
+    body.player-page #bingo-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 6px !important;
+    }
+    
+    body.player-page .bingo-cell {
+        min-height: 80px !important;
+        font-size: 11px !important;
+        padding: 4px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        line-height: 1.2 !important;
+        word-break: break-word !important;
+    }
+
+    body.player-page .header {
+        flex-direction: column !important;
+        gap: 15px !important;
+        text-align: center !important;
+    }
+
+    /* Fix Title Bar on Mobile */
+    header h1 { color: #ffffff !important; }
+    header {
+        padding: 10px 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    header h1 {
+        font-size: 20px !important;
+    }
+    header img {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    
+    /* Fix Leaderboard Table */
+    body.player-page th, 
+    body.player-page td {
+        font-size: 12px !important;
+        padding: 8px 5px !important;
+        word-wrap: break-word !important; white-space: normal !important;
+    }
+}
+
+body.dark-mode .leaderboard-tabs button {
+    background: #2f2f35;
+    color: #efeff1;
+}
+body.dark-mode .leaderboard-tabs button:hover:not(.active) {
+    background: #3a3a3d;
 }

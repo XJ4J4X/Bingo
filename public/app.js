@@ -278,9 +278,7 @@ async function startGame() {
     gameMessage.textContent = "";
     validateGridBtn.disabled = true;
     
-    if (BINGO_PHRASES.length === 0) {
-        await fetchPhrases();
-    }
+    await fetchPhrases();
     generateGrid();
     startStateSync();
 }
@@ -359,7 +357,7 @@ async function syncState() {
         isGameActive = data.is_active;
         timeLeft = data.time_left;
         
-        if (!window.gridGenerated || (window.wasGameActive === false && isGameActive === true)) {
+        if (!window.gridGenerated || (!window.wasGameActive && isGameActive === true)) {
             hasSubmittedScore = false;
             await fetchPhrases();
             generateGrid();
@@ -552,7 +550,6 @@ document.getElementById('btn-top-streaks')?.addEventListener('click', () => {
     document.getElementById('btn-top-score').classList.remove('active');
     document.getElementById('btn-top-wins').classList.remove('active');
     document.getElementById('btn-top-live')?.classList.remove('active');
-    document.getElementById('btn-top-streaks')?.classList.remove('active');
     document.getElementById('leaderboard-value-header').textContent = 'Record 🔥';
     renderLeaderboard();
 });
