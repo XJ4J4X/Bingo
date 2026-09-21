@@ -72,6 +72,7 @@ game_state = {
 }
 
 def init_db():
+    global game_state
     conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
@@ -130,7 +131,6 @@ def init_db():
     ''')
     c.execute('SELECT MAX(id) FROM lives')
     max_live = c.fetchone()[0]
-    global game_state
     game_state['current_live_id'] = max_live if max_live else 0
 
     c.execute('''
@@ -197,6 +197,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory="public", **kwargs)
 
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        super().end_headers()
+
     def do_GET(self):
         url_path = self.path.split('?')[0]
         
@@ -246,19 +250,26 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
+            
+            curr_live = game_state.get('current_live_id', 0)
+            def eff_streak(streak, last_live):
+                if not curr_live or not last_live: return 0
+                if last_live < curr_live - 1: return 0
+                return streak or 0
+
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, score, color, current_streak, font_family FROM users ORDER BY score DESC LIMIT 50')
-            top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, score, color, current_streak, font_family, last_live_id FROM users ORDER BY score DESC LIMIT 50')
+            top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
-            c.execute('SELECT pseudo, wins, color, current_streak, font_family FROM users ORDER BY wins DESC LIMIT 50')
-            top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, wins, color, current_streak, font_family, last_live_id FROM users ORDER BY wins DESC LIMIT 50')
+            top_wins = [{'pseudo': row[0], 'wins': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
-            c.execute('SELECT pseudo, score_live, color, current_streak, font_family FROM users WHERE score_live > 0 ORDER BY score_live DESC LIMIT 50')
-            top_live = [{'pseudo': row[0], 'score_live': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, score_live, color, current_streak, font_family, last_live_id FROM users WHERE score_live > 0 ORDER BY score_live DESC LIMIT 50')
+            top_live = [{'pseudo': row[0], 'score_live': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
-            c.execute('SELECT pseudo, max_streak, color, current_streak, font_family FROM users WHERE max_streak > 0 ORDER BY max_streak DESC LIMIT 50')
-            top_streaks = [{'pseudo': row[0], 'max_streak': row[1], 'color': row[2], 'streak': row[3], 'font_family': row[4]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, max_streak, color, current_streak, font_family, last_live_id FROM users WHERE max_streak > 0 ORDER BY max_streak DESC LIMIT 50')
+            top_streaks = [{'pseudo': row[0], 'max_streak': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
             conn.close()
             
@@ -471,16 +482,20 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        global game_state
         url_path = self.path.split('?')[0]
         content_length = int(self.headers.get('Content-Length', 0))
-        post_data = self.rfile.read(content_length)
         
-        try:
-            data = json.loads(post_data.decode('utf-8')) if post_data else {}
-        except json.JSONDecodeError:
-            self.send_response(400)
-            self.end_headers()
-            return
+        if url_path != '/api/admin/fonts/upload':
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8')) if post_data else {}
+            except Exception:
+                self.send_response(400)
+                self.end_headers()
+                return
+        else:
+            data = {}
 
         if url_path == '/api/admin/rules/toggle':
             admin_data = check_admin(self.headers)
@@ -745,7 +760,6 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 c.execute('INSERT INTO lives DEFAULT VALUES')
                 c.execute('SELECT MAX(id) FROM lives')
                 max_live = c.fetchone()[0]
-                global game_state
                 game_state["current_live_id"] = max_live if max_live else 0
                 conn.commit()
                 
