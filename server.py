@@ -64,7 +64,7 @@ game_state = {
     "duration": 600,
     "lock_duration": 0,
     "lock_start_time": None,
-    "verification_mode": "trust",
+    "verification_mode": "strict",
     "active_phrases": [],
     "admin_ticked": [],
     "color_choice_user_pseudo": None,
@@ -814,7 +814,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["duration"] = data.get("duration", 600)
                 game_state["lock_duration"] = data.get("lock_duration", 0)
                 game_state["lock_start_time"] = None
-                game_state["verification_mode"] = data.get("verification_mode", "trust")
+                game_state["verification_mode"] = data.get("verification_mode", "strict")
                 game_state["admin_ticked"] = []
                 
                 profile_id = data.get("profile_id")
