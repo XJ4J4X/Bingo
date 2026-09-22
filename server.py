@@ -900,28 +900,56 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
             elif url_path == '/api/admin/fonts/upload':
-                import cgi, os, zipfile, io
+                import os, zipfile, io
                 
-                content_type = self.headers.get('Content-Type')
-                if not content_type or not content_type.startswith('multipart/form-data'):
+                content_type = self.headers.get('Content-Type', '')
+                if 'multipart/form-data' not in content_type:
                     self.send_error(400, "Bad Request")
                     return
                 
-                form = cgi.FieldStorage(
-                    fp=self.rfile,
-                    headers=self.headers,
-                    environ={'REQUEST_METHOD': 'POST',
-                             'CONTENT_TYPE': self.headers['Content-Type'],
-                             }
-                )
+                # Parse boundary from Content-Type
+                boundary = None
+                for part in content_type.split(';'):
+                    part = part.strip()
+                    if part.startswith('boundary='):
+                        boundary = part.split('=', 1)[1].strip('"')
+                        break
                 
-                if 'font_file' not in form:
+                if not boundary:
+                    self.send_error(400, "No boundary found")
+                    return
+                
+                raw_data = self.rfile.read(content_length)
+                boundary_bytes = ('--' + boundary).encode()
+                parts = raw_data.split(boundary_bytes)
+                
+                file_data = None
+                filename = None
+                
+                for part in parts:
+                    if b'Content-Disposition' not in part:
+                        continue
+                    # Extract headers and body
+                    header_end = part.find(b'\r\n\r\n')
+                    if header_end == -1:
+                        continue
+                    header_section = part[:header_end].decode('utf-8', errors='replace')
+                    body = part[header_end + 4:]
+                    # Remove trailing \r\n
+                    if body.endswith(b'\r\n'):
+                        body = body[:-2]
+                    
+                    if 'name="font_file"' in header_section:
+                        # Extract filename
+                        for h_part in header_section.split(';'):
+                            h_part = h_part.strip()
+                            if h_part.startswith('filename='):
+                                filename = h_part.split('=', 1)[1].strip('"')
+                        file_data = body
+                
+                if not file_data or not filename:
                     self.send_error(400, "No file uploaded")
                     return
-                    
-                file_item = form['font_file']
-                filename = file_item.filename
-                file_data = file_item.file.read()
                 
                 os.makedirs(os.path.join('public', 'fonts'), exist_ok=True)
                 saved_fonts = []

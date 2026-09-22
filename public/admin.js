@@ -188,7 +188,6 @@ async function syncGameState() {
             document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
             document.getElementById('stop-game-btn').className = "danger-btn";
         }
-        loadUsers();
     } catch (err) {
         console.error("Erreur sync timer", err);
     }
