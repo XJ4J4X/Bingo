@@ -782,128 +782,128 @@ if (backupBtn) {
 
 
 
-// --- TABS LOGIC ---
-const navMainBtn = document.getElementById('nav-main-btn');
-const navStatsBtn = document.getElementById('nav-stats-btn');
-const navAccountsBtn = document.getElementById('nav-accounts-btn');
-const navRulesBtn = document.getElementById('nav-rules-btn');
-const mainAdminPanel = document.getElementById('main-admin-panel');
-const statsSection = document.getElementById('stats-section');
-const accountsSection = document.getElementById('accounts-section');
-const rulesSection = document.getElementById('rules-section');
-const statsUsersContainer = document.getElementById('stats-users-container');
-const statsPhrasesContainer = document.getElementById('stats-phrases-container');
 
-function resetNavBtns() {
-    navMainBtn.style.backgroundColor = '#3498db';
-    navMainBtn.style.color = 'white';
-    navMainBtn.className = '';
-    
-    navStatsBtn.style.backgroundColor = '#3498db';
-    navStatsBtn.style.color = 'white';
-    navStatsBtn.className = '';
-    
-    if (navAccountsBtn) {
-        navAccountsBtn.style.backgroundColor = '#3498db';
-        navAccountsBtn.style.color = 'white';
-        navAccountsBtn.className = '';
-    }
-    if (navRulesBtn) {
-        navRulesBtn.style.backgroundColor = '#3498db';
-        navRulesBtn.style.color = 'white';
-        navRulesBtn.className = '';
-    }
-    
-    mainAdminPanel.style.display = 'none';
-    statsSection.style.display = 'none';
-    if (accountsSection) accountsSection.style.display = 'none';
-    if (rulesSection) rulesSection.style.display = 'none';
-}
-
-if (navMainBtn && navStatsBtn) {
-    navMainBtn.addEventListener('click', function() {
-        resetNavBtns();
-        mainAdminPanel.style.display = 'block';
-        navMainBtn.className = 'success-btn';
-        navMainBtn.style.backgroundColor = '';
-        navMainBtn.style.color = '';
-    });
-    
-    navStatsBtn.addEventListener('click', function() {
-        resetNavBtns();
-        statsSection.style.display = 'block';
-        navStatsBtn.className = 'success-btn';
-        navStatsBtn.style.backgroundColor = '';
-        navStatsBtn.style.color = '';
-        loadStats();
-    });
-    
-    if (navAccountsBtn) {
-        navAccountsBtn.addEventListener('click', function() {
-            resetNavBtns();
-            if (accountsSection) accountsSection.style.display = 'block';
-            navAccountsBtn.className = 'success-btn';
-            navAccountsBtn.style.backgroundColor = '';
-            navAccountsBtn.style.color = '';
-        });
-    }
-
-    if (navRulesBtn) {
-        navRulesBtn.addEventListener('click', function() {
-            resetNavBtns();
-            if (rulesSection) rulesSection.style.display = 'block';
-            navRulesBtn.className = 'success-btn';
-            navRulesBtn.style.backgroundColor = '';
-            navRulesBtn.style.color = '';
-        });
-    }
-}
 
 async function loadStats() {
     try {
         const response = await fetchWithAuth('/api/admin/stats');
+        if (!response || !response.ok) {
+            console.error("Erreur HTTP lors de la récupération des stats");
+            return;
+        }
         const data = await response.json();
-        
-        statsUsersContainer.innerHTML = '';
-        if (data.users.length === 0) {
-            statsUsersContainer.innerHTML = '<p>Aucune donnée disponible.</p>';
-        } else {
-            const maxScore = Math.max(...data.users.map(u => u.score), 100);
-            data.users.forEach(user => {
-                const percentage = Math.min((user.score / maxScore) * 100, 100);
-                statsUsersContainer.innerHTML += `
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <strong>${user.pseudo}</strong>
-                            <span>${user.score} pts</span>
-                        </div>
-                        <div style="background-color: #ecf0f1; border-radius: 4px; height: 16px; width: 100%; overflow: hidden;">
-                            <div style="background-color: #3498db; width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
-                        </div>
-                    </div>
-                `;
-            });
+
+        // 1. KPI Cards
+        if (data.summary) {
+            const elUsers = document.getElementById('kpi-total-users');
+            const elLives = document.getElementById('kpi-total-lives');
+            const elChecked = document.getElementById('kpi-total-checked');
+            const elAcc = document.getElementById('kpi-global-accuracy');
+            if (elUsers) elUsers.textContent = data.summary.total_users || 0;
+            if (elLives) elLives.textContent = data.summary.total_lives || 0;
+            if (elChecked) elChecked.textContent = `${data.summary.total_correct || 0} / ${data.summary.total_checked || 0}`;
+            if (elAcc) elAcc.textContent = `${data.summary.global_accuracy || 0}%`;
         }
         
-        statsPhrasesContainer.innerHTML = '';
-        if (data.phrases.length === 0) {
-            statsPhrasesContainer.innerHTML = '<p>Aucune donnée disponible.</p>';
-        } else {
-            const maxCount = Math.max(...data.phrases.map(p => p.count), 5);
-            data.phrases.forEach(item => {
-                const percentage = Math.min((item.count / maxCount) * 100, 100);
-                statsPhrasesContainer.innerHTML += `
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
-                            <strong>${item.phrase}</strong>
-                            <span>${item.count} fois</span>
+        // 2. Top Joueurs (Scores)
+        const statsUsersContainer = document.getElementById('stats-users-container');
+        if (statsUsersContainer) {
+            statsUsersContainer.innerHTML = '';
+            if (!data.users || data.users.length === 0) {
+                statsUsersContainer.innerHTML = '<p style="color:#7f8c8d;">Aucune donnée disponible.</p>';
+            } else {
+                const maxScore = Math.max(...data.users.map(u => u.score), 50);
+                data.users.forEach((user, idx) => {
+                    const percentage = Math.min((user.score / maxScore) * 100, 100);
+                    const colorStyle = user.color ? `color: ${user.color}; font-weight: bold;` : 'font-weight: bold;';
+                    statsUsersContainer.innerHTML += `
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
+                                <span><strong>#${idx + 1}</strong> <span style="${colorStyle}">${user.pseudo}</span> ${user.streak > 1 ? `🔥${user.streak}` : ''}</span>
+                                <span><strong>${user.score} pts</strong> <span style="font-size: 0.8em; color: #7f8c8d;">(${user.wins}🏆 - ${user.participations} lives)</span></span>
+                            </div>
+                            <div style="background-color: #ecf0f1; border-radius: 6px; height: 12px; width: 100%; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #3498db, #2980b9); width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                            </div>
                         </div>
-                        <div style="background-color: #ecf0f1; border-radius: 4px; height: 16px; width: 100%; overflow: hidden;">
-                            <div style="background-color: #2ecc71; width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                    `;
+                });
+            }
+        }
+        
+        // 3. Top Phrases Réalisées
+        const statsPhrasesContainer = document.getElementById('stats-phrases-container');
+        if (statsPhrasesContainer) {
+            statsPhrasesContainer.innerHTML = '';
+            if (!data.phrases || data.phrases.length === 0) {
+                statsPhrasesContainer.innerHTML = '<p style="color:#7f8c8d;">Aucune phrase validée pour le moment.</p>';
+            } else {
+                const maxCount = Math.max(...data.phrases.map(p => p.count), 5);
+                data.phrases.forEach((item, idx) => {
+                    const percentage = Math.min((item.count / maxCount) * 100, 100);
+                    statsPhrasesContainer.innerHTML += `
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
+                                <span><strong>#${idx + 1}</strong> ${item.phrase}</span>
+                                <span style="color: #27ae60; font-weight: bold;">${item.count} fois</span>
+                            </div>
+                            <div style="background-color: #ecf0f1; border-radius: 6px; height: 12px; width: 100%; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #2ecc71, #27ae60); width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                            </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            }
+        }
+
+        // 4. Snipers (Précision)
+        const snipersContainer = document.getElementById('stats-snipers-container');
+        if (snipersContainer) {
+            snipersContainer.innerHTML = '';
+            if (!data.snipers || data.snipers.length === 0) {
+                snipersContainer.innerHTML = '<p style="color:#7f8c8d;">Pas encore assez de données (min. 5 cases).</p>';
+            } else {
+                data.snipers.forEach((s, idx) => {
+                    const colorStyle = s.color ? `color: ${s.color}; font-weight: bold;` : 'font-weight: bold;';
+                    snipersContainer.innerHTML += `
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
+                                <span><strong>#${idx + 1}</strong> <span style="${colorStyle}">${s.pseudo}</span></span>
+                                <span><strong style="color: #e74c3c;">${s.accuracy}%</strong> <span style="font-size:0.8em; color:#7f8c8d;">(${s.correct}/${s.checked})</span></span>
+                            </div>
+                            <div style="background-color: #ecf0f1; border-radius: 6px; height: 12px; width: 100%; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #e74c3c, #c0392b); width: ${Math.min(s.accuracy, 100)}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // 5. Records de Streaks 🔥
+        const streaksContainer = document.getElementById('stats-streaks-container');
+        if (streaksContainer) {
+            streaksContainer.innerHTML = '';
+            if (!data.top_streaks || data.top_streaks.length === 0) {
+                streaksContainer.innerHTML = '<p style="color:#7f8c8d;">Aucune série enregistrée pour le moment.</p>';
+            } else {
+                const maxStreakVal = Math.max(...data.top_streaks.map(t => t.max_streak), 3);
+                data.top_streaks.forEach((t, idx) => {
+                    const percentage = Math.min((t.max_streak / maxStreakVal) * 100, 100);
+                    const colorStyle = t.color ? `color: ${t.color}; font-weight: bold;` : 'font-weight: bold;';
+                    streaksContainer.innerHTML += `
+                        <div style="margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9em;">
+                                <span><strong>#${idx + 1}</strong> <span style="${colorStyle}">${t.pseudo}</span></span>
+                                <span style="color: #f39c12; font-weight: bold;">🔥 ${t.max_streak} lives consécutifs</span>
+                            </div>
+                            <div style="background-color: #ecf0f1; border-radius: 6px; height: 12px; width: 100%; overflow: hidden;">
+                                <div style="background: linear-gradient(90deg, #f39c12, #d35400); width: ${percentage}%; height: 100%; transition: width 0.5s ease-out;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
         }
         
     } catch(err) {

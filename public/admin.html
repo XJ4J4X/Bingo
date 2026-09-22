@@ -200,18 +200,52 @@
             <!-- SECTION STATS -->
             <section id="stats" class="admin-section">
                 <div class="admin-header">
-                    <h1>Statistiques Globales</h1>
+                    <h1>Statistiques</h1>
                 </div>
 
-                <div style="display: flex; gap: 20px;">
-                    <div class="admin-card" style="flex: 1;">
-                        <h3 style="border-bottom-color: #3498db;">Top Joueurs</h3>
+                <!-- Chiffres clés -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div class="admin-card" style="margin: 0; padding: 15px; text-align: center;">
+                        <span style="font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold;">Joueurs inscrits</span>
+                        <div id="kpi-total-users" style="font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin-top: 5px;">0</div>
+                    </div>
+                    <div class="admin-card" style="margin: 0; padding: 15px; text-align: center;">
+                        <span style="font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold;">Lives organisés</span>
+                        <div id="kpi-total-lives" style="font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin-top: 5px;">0</div>
+                    </div>
+                    <div class="admin-card" style="margin: 0; padding: 15px; text-align: center;">
+                        <span style="font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold;">Cases validées</span>
+                        <div id="kpi-total-checked" style="font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin-top: 5px;">0</div>
+                    </div>
+                    <div class="admin-card" style="margin: 0; padding: 15px; text-align: center;">
+                        <span style="font-size: 0.85rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold;">Taux de réussite global</span>
+                        <div id="kpi-global-accuracy" style="font-size: 1.8rem; font-weight: bold; color: #2c3e50; margin-top: 5px;">0%</div>
+                    </div>
+                </div>
+
+                <!-- Ligne 1 : Top Joueurs & Phrases fréquentes -->
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 25px;">
+                    <div class="admin-card" style="flex: 1; min-width: 300px;">
+                        <h3 style="border-bottom-color: #3498db;">Classement général</h3>
                         <div id="stats-users-container"></div>
                     </div>
                     
-                    <div class="admin-card" style="flex: 1;">
-                        <h3 style="border-bottom-color: #2ecc71;">Top Phrases Réalisées</h3>
+                    <div class="admin-card" style="flex: 1; min-width: 300px;">
+                        <h3 style="border-bottom-color: #2ecc71;">Phrases les plus dites</h3>
                         <div id="stats-phrases-container"></div>
+                    </div>
+                </div>
+
+                <!-- Ligne 2 : Taux de réussite individuel & Séries -->
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="admin-card" style="flex: 1; min-width: 300px;">
+                        <h3 style="border-bottom-color: #e74c3c;">Meilleurs taux de réussite</h3>
+                        <div id="stats-snipers-container"></div>
+                    </div>
+
+                    <div class="admin-card" style="flex: 1; min-width: 300px;">
+                        <h3 style="border-bottom-color: #f39c12;">Plus longues séries (🔥)</h3>
+                        <div id="stats-streaks-container"></div>
                     </div>
                 </div>
             </section>
@@ -286,6 +320,6 @@
         </div>
     </div>
 
-    <script src="admin.js?v=4200"></script>
+    <script src="admin.js?v=4600"></script>
 </body>
 </html>

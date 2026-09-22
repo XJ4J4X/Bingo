@@ -705,6 +705,8 @@ body.player-page #leaderboard-section,
 body.player-page #stats-section, 
 body.player-page #players-section, 
 body.player-page .player-card, 
+body.player-page .stat-card,
+body.player-page #player-title-box,
 body.player-page #rules-modal > div {
     background-color: #ffffff !important;
     border: 1px solid #e5e5ea !important;
@@ -754,22 +756,9 @@ body.player-page .grid,
 body.player-page #bingo-grid {
     gap: 10px !important;
 }
-body.player-page .bingo-cell {
-    background-color: #ffffff !important;
-    border: 2px solid #e5e5ea !important;
-    border-radius: 6px !important;
-    color: #2c3e50 !important;
-    transition: all 0.1s ease !important;
-}
-body.player-page .bingo-cell:hover:not(.checked) {
-    background-color: #f7f9fa !important;
-    border-color: #d1d1d6 !important;
-}
-body.player-page .bingo-cell.checked {
-    background-color: #3498db !important;
-    color: white !important;
-    border-color: #3498db !important;
-}
+
+
+
 
 /* Header Light */
 body.player-page .header {
@@ -827,6 +816,8 @@ body.player-page.dark-mode #leaderboard-section,
 body.player-page.dark-mode #stats-section, 
 body.player-page.dark-mode #players-section, 
 body.player-page.dark-mode .player-card, 
+body.player-page.dark-mode .stat-card,
+body.player-page.dark-mode #player-title-box,
 body.player-page.dark-mode #rules-modal > div {
     background-color: #25262b !important;
     border: 1px solid #2f2f35 !important;
@@ -853,15 +844,8 @@ body.player-page.dark-mode input[type="password"]:focus {
 }
 
 /* Dark Grid */
-body.player-page.dark-mode .bingo-cell {
-    background-color: #2c2e33 !important;
-    border: 2px solid #3a3a3d !important;
-    color: #efeff1 !important;
-}
-body.player-page.dark-mode .bingo-cell:hover:not(.checked) {
-    background-color: #26262c !important;
-    border-color: #555558 !important;
-}
+
+
 
 /* Dark Header */
 body.player-page.dark-mode .header {
@@ -909,24 +893,6 @@ body.player-page.dark-mode #theme-toggle {
         box-sizing: border-box !important;
     }
 
-    body.player-page .grid, 
-    body.player-page #bingo-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 6px !important;
-    }
-    
-    body.player-page .bingo-cell {
-        min-height: 80px !important;
-        font-size: 11px !important;
-        padding: 4px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
-        line-height: 1.2 !important;
-        word-break: break-word !important;
-    }
-
     body.player-page .header {
         flex-direction: column !important;
         gap: 15px !important;
@@ -953,9 +919,9 @@ body.player-page.dark-mode #theme-toggle {
     body.player-page td {
         font-size: 12px !important;
         padding: 8px 5px !important;
-        word-wrap: break-word !important; white-space: normal !important;
     }
 }
+
 
 body.dark-mode .leaderboard-tabs button {
     background: #2f2f35;

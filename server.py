@@ -288,9 +288,18 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 5')
             phrs = [{"phrase": p[0], "count": p[1]} for p in c.fetchall()]
-            conn.close()
-            
             if user:
+                c.execute('SELECT max_streak FROM users WHERE pseudo = ?', (pseudo,))
+                max_streak_val = c.fetchone()[0] or 0
+
+                c.execute('SELECT COUNT(*) FROM lives')
+                total_lives = c.fetchone()[0] or 0
+
+                c.execute('SELECT COUNT(*) FROM users')
+                total_users = c.fetchone()[0] or 0
+
+                conn.close()
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -301,10 +310,16 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     "boxes_checked": user[3],
                     "boxes_correct": user[4],
                     "has_accepted_rules": bool(user[5]),
+                    "current_streak": user[6] or 0,
+                    "font_family": user[7] or '',
+                    "max_streak": max_streak_val,
+                    "total_lives": total_lives,
+                    "total_users": total_users,
                     "top_phrases": phrs
                 }
                 self.wfile.write(json.dumps(stats).encode('utf-8'))
             else:
+                conn.close()
                 self.send_error(401)
             
         elif url_path == '/api/fonts':
@@ -459,7 +474,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(backup_data, indent=2).encode('utf-8'))
 
-        elif self.path == '/api/admin/stats':
+        elif url_path == '/api/admin/stats':
             admin = check_admin(self.headers)
             if not admin:
                 self.send_response(401)
@@ -467,15 +482,65 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, score FROM users ORDER BY score DESC LIMIT 10')
-            usrs = c.fetchall()
+            
+            # Totaux
+            c.execute('SELECT COUNT(*) FROM users')
+            total_users = c.fetchone()[0] or 0
+
+            c.execute('SELECT COUNT(*) FROM lives')
+            total_lives = c.fetchone()[0] or 0
+
+            c.execute('SELECT SUM(boxes_checked), SUM(boxes_correct) FROM users')
+            sum_row = c.fetchone()
+            total_checked = sum_row[0] or 0
+            total_correct = sum_row[1] or 0
+            global_accuracy = round((total_correct / total_checked * 100), 1) if total_checked > 0 else 0
+
+            # Top 10 Joueurs par Score
+            c.execute('SELECT pseudo, score, wins, lives_participated, current_streak, max_streak, color FROM users ORDER BY score DESC LIMIT 10')
+            usrs = [{'pseudo': u[0], 'score': u[1], 'wins': u[2], 'participations': u[3], 'streak': u[4], 'max_streak': u[5], 'color': u[6]} for u in c.fetchall()]
+
+            # Top 10 Phrases les plus validées
             c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 10')
-            phrs = c.fetchall()
+            phrs = [{'phrase': p[0], 'count': p[1]} for p in c.fetchall()]
+
+            # Phrases les moins souvent validées ou jamais dites
+            c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count ASC LIMIT 5')
+            rare_phrs = [{'phrase': p[0], 'count': p[1]} for p in c.fetchall()]
+
+            # Top 5 Joueurs Sniper (meilleure précision, min 5 cases cochées)
+            c.execute('SELECT pseudo, boxes_checked, boxes_correct, color FROM users WHERE boxes_checked >= 5')
+            raw_snipers = c.fetchall()
+            snipers = []
+            for s in raw_snipers:
+                pseudo_s, checked_s, correct_s, color_s = s[0], s[1], s[2], s[3]
+                acc_s = round((correct_s / checked_s * 100), 1) if checked_s > 0 else 0
+                snipers.append({'pseudo': pseudo_s, 'checked': checked_s, 'correct': correct_s, 'accuracy': acc_s, 'color': color_s})
+            snipers.sort(key=lambda x: (x['accuracy'], x['correct']), reverse=True)
+            snipers = snipers[:5]
+
+            # Top 5 Records de Streak 🔥
+            c.execute('SELECT pseudo, max_streak, color FROM users WHERE max_streak > 0 ORDER BY max_streak DESC LIMIT 5')
+            top_streaks = [{'pseudo': t[0], 'max_streak': t[1], 'color': t[2]} for t in c.fetchall()]
+
             conn.close()
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            res = {"users": [{"pseudo": u[0], "score": u[1]} for u in usrs], "phrases": [{"phrase": p[0], "count": p[1]} for p in phrs]}
+            res = {
+                "summary": {
+                    "total_users": total_users,
+                    "total_lives": total_lives,
+                    "total_checked": total_checked,
+                    "total_correct": total_correct,
+                    "global_accuracy": global_accuracy
+                },
+                "users": usrs,
+                "phrases": phrs,
+                "rare_phrases": rare_phrs,
+                "snipers": snipers,
+                "top_streaks": top_streaks
+            }
             self.wfile.write(json.dumps(res).encode('utf-8'))
             
         else:

@@ -635,27 +635,91 @@ async function loadUserStats() {
         if (res.ok) {
             const data = await res.json();
             
-            document.getElementById('my-score').textContent = data.score || 0;
-            document.getElementById('my-wins').textContent = data.wins || 0;
-            document.getElementById('my-participations').textContent = data.lives_participated || 0;
+            const score = parseInt(data.score, 10) || 0;
+            const wins = parseInt(data.wins, 10) || 0;
+            const participations = parseInt(data.lives_participated, 10) || 0;
+            const totalLives = parseInt(data.total_lives, 10) || 0;
+            const boxesChecked = parseInt(data.boxes_checked, 10) || 0;
+            const boxesCorrect = parseInt(data.boxes_correct, 10) || 0;
+            const currentStreak = parseInt(data.current_streak, 10) || 0;
+            const maxStreak = parseInt(data.max_streak, 10) || 0;
+
+            document.getElementById('my-score').textContent = score;
+            document.getElementById('my-wins').textContent = wins;
+            document.getElementById('my-participations').textContent = participations;
+            if (document.getElementById('total-lives-count')) {
+                document.getElementById('total-lives-count').textContent = totalLives;
+            }
+            if (document.getElementById('my-boxes-correct')) {
+                document.getElementById('my-boxes-correct').textContent = boxesCorrect;
+                document.getElementById('my-boxes-checked').textContent = boxesChecked;
+            }
+            if (document.getElementById('my-streak')) {
+                document.getElementById('my-streak').textContent = currentStreak;
+                document.getElementById('my-max-streak').textContent = maxStreak;
+                document.getElementById('my-streak-flame').style.display = currentStreak > 0 ? 'inline' : 'none';
+            }
             
+            // Calcul Taux de Réussite
             let accuracy = 0;
-            if (data.boxes_checked > 0) {
-                accuracy = Math.round((data.boxes_correct / data.boxes_checked) * 100);
+            if (boxesChecked > 0) {
+                accuracy = Math.round((boxesCorrect / boxesChecked) * 100);
             }
             document.getElementById('my-accuracy').textContent = accuracy;
             document.getElementById('accuracy-progress').style.width = accuracy + '%';
-            
+
+            // Titres honorifiques avec emojis et Didier
+            let titleEmoji = '🎖️';
+            let titleText = 'Recrue du Manoir';
+            let titleCriteria = 'Compte créé';
+            let showDidier = false;
+
+            if (wins >= 5 || score >= 200) {
+                titleEmoji = '👑';
+                titleText = 'Légende du Manoir';
+                titleCriteria = '5 victoires ou 200 pts';
+            } else if (maxStreak >= 5 || participations >= 10) {
+                titleEmoji = '🔥';
+                titleText = 'Pilier du Live';
+                titleCriteria = '5 lives consécutifs ou 10 joués';
+            } else if (accuracy >= 75 && boxesChecked >= 10) {
+                titleEmoji = '🎯';
+                titleText = 'Sniper';
+                titleCriteria = '+75% de réussite';
+            } else if (wins >= 1) {
+                titleEmoji = '👻';
+                titleText = 'Fantôme';
+                titleCriteria = '1 victoire en live';
+            } else if (score >= 50 || participations >= 3) {
+                titleEmoji = '🦒';
+                titleText = 'Habitué du Stream';
+                titleCriteria = '50 pts ou 3 lives joués';
+                showDidier = true;
+            }
+
+            const titleNameEl = document.getElementById('player-title-name');
+            const titleCriteriaEl = document.getElementById('player-title-criteria');
+            const titleAvatarEl = document.getElementById('player-title-avatar');
+            const titleEmojiEl = document.getElementById('player-title-emoji');
+            if (titleNameEl) titleNameEl.textContent = titleText;
+            if (titleCriteriaEl) titleCriteriaEl.textContent = titleCriteria;
+            if (titleAvatarEl) titleAvatarEl.style.display = showDidier ? 'inline-flex' : 'none';
+            if (titleEmojiEl) {
+                titleEmojiEl.textContent = titleEmoji;
+                titleEmojiEl.style.display = showDidier ? 'none' : 'inline-flex';
+            }
+
             const phrasesList = document.getElementById('top-phrases-list');
             phrasesList.innerHTML = '';
             if (data.top_phrases && data.top_phrases.length > 0) {
-                data.top_phrases.forEach(p => {
+                data.top_phrases.forEach((p, idx) => {
                     const li = document.createElement('li');
-                    li.textContent = `${p.phrase} (${p.count} fois)`;
+                    li.style.padding = '4px 0';
+                    li.innerHTML = `<strong>#${idx + 1}</strong> ${p.phrase} <span style="color:#3498db; font-weight:bold; float:right;">${p.count} fois</span>`;
                     phrasesList.appendChild(li);
                 });
             } else {
-                phrasesList.innerHTML = '<li>Aucune donnée pour le moment.</li>';
+                phrasesList.innerHTML = '<li>Aucun événement enregistré pour le moment.</li>';
             }
         }
     } catch (e) {
