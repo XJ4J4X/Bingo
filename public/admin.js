@@ -108,7 +108,7 @@ async function initAdmin() {
     const roleName = adminRole === 'superadmin' ? 'Boss' : 'Admin';
     const greetingEl = document.getElementById('admin-greeting');
     if (greetingEl) {
-        greetingEl.textContent = `${greeting}, ${roleName} 👑 👻`;
+        greetingEl.innerHTML = `${greeting}, ${roleName} 👑 👻 <img src="didier.png" alt="Didier" style="height:1em;vertical-align:middle;">`;
     }
 
     await loadCustomFonts();
