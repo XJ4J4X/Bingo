@@ -1173,12 +1173,21 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                         c.execute('INSERT INTO profiles (name, phrases_text) VALUES (?, ?)', (name, phrases_text))
                         conn.commit()
                         self.send_response(200)
-                    except DBIntegrityError:
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                    except Exception as e:
                         self.send_response(400)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'error': 'Ce nom de profil existe déjà'}).encode('utf-8'))
                     finally:
                         conn.close()
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                else:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Nom et phrases requis'}).encode('utf-8'))
                 
             elif url_path == '/api/admin/profiles/update':
                 profile_id = data.get('id')
@@ -1191,12 +1200,21 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                         c.execute('UPDATE profiles SET name = ?, phrases_text = ? WHERE id = ?', (name, phrases_text, profile_id))
                         conn.commit()
                         self.send_response(200)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                     except Exception as e:
                         self.send_response(400)
+                        self.send_header('Content-type', 'application/json')
+                        self.end_headers()
+                        self.wfile.write(json.dumps({'error': 'Erreur lors de la modification'}).encode('utf-8'))
                     finally:
                         conn.close()
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                else:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Données invalides'}).encode('utf-8'))
                 
             elif url_path == '/api/admin/profiles/delete':
                 profile_id = data.get('id')

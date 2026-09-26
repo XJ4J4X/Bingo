@@ -562,11 +562,15 @@ async function loadProfiles() {
                 const profile = profiles.find(pr => pr.id == id);
                 if (profile) {
                     editingProfileId = id;
-                    document.getElementById('new-profile-name').value = profile.name;
-                    document.getElementById('new-profile-phrases').value = profile.phrases;
-                    document.getElementById('add-profile-btn').textContent = 'Mettre à jour Profil';
-                    document.getElementById('cancel-edit-profile-btn').style.display = 'block';
-                    document.getElementById('new-profile-name').scrollIntoView({behavior: 'smooth', block: 'center'});
+                    const nameEl = document.getElementById('new-profile-name') || document.getElementById('profile-name');
+                    const phrasesEl = document.getElementById('new-profile-phrases') || document.getElementById('profile-phrases');
+                    if (nameEl) nameEl.value = profile.name;
+                    if (phrasesEl) phrasesEl.value = profile.phrases;
+                    const addBtn = document.getElementById('add-profile-btn');
+                    if (addBtn) addBtn.textContent = 'Mettre à jour Profil';
+                    const cancelBtn = document.getElementById('cancel-edit-profile-btn');
+                    if (cancelBtn) cancelBtn.style.display = 'block';
+                    if (nameEl) nameEl.scrollIntoView({behavior: 'smooth', block: 'center'});
                 }
             });
         });
@@ -592,11 +596,15 @@ const cancelEditProfileBtn = document.getElementById('cancel-edit-profile-btn');
 
 function resetProfileForm() {
     editingProfileId = null;
-    document.getElementById('new-profile-name').value = '';
-    document.getElementById('new-profile-phrases').value = '';
-    document.getElementById('add-profile-btn').textContent = 'Sauvegarder Profil';
-    cancelEditProfileBtn.style.display = 'none';
-    document.getElementById('csv-upload').value = '';
+    const nameEl = document.getElementById('new-profile-name') || document.getElementById('profile-name');
+    const phrasesEl = document.getElementById('new-profile-phrases') || document.getElementById('profile-phrases');
+    const csvEl = document.getElementById('csv-upload') || document.getElementById('csv-file-input');
+    if (nameEl) nameEl.value = '';
+    if (phrasesEl) phrasesEl.value = '';
+    const addBtn = document.getElementById('add-profile-btn');
+    if (addBtn) addBtn.textContent = 'Sauvegarder Profil';
+    if (cancelEditProfileBtn) cancelEditProfileBtn.style.display = 'none';
+    if (csvEl) csvEl.value = '';
 }
 
 if (cancelEditProfileBtn) {
@@ -605,8 +613,10 @@ if (cancelEditProfileBtn) {
 
 if (addProfileBtn) {
     addProfileBtn.addEventListener('click', async () => {
-        const name = document.getElementById('new-profile-name').value.trim();
-        const text = document.getElementById('new-profile-phrases').value.trim();
+        const nameEl = document.getElementById('new-profile-name') || document.getElementById('profile-name');
+        const phrasesEl = document.getElementById('new-profile-phrases') || document.getElementById('profile-phrases');
+        const name = nameEl ? nameEl.value.trim() : '';
+        const text = phrasesEl ? phrasesEl.value.trim() : '';
         if (name && text) {
             const url = editingProfileId ? '/api/admin/profiles/update' : '/api/admin/profiles/add';
             const payload = { name: name, phrases_text: text };
@@ -626,7 +636,8 @@ if (addProfileBtn) {
                     loadProfiles();
                     alert("Profil sauvegardé avec succès !");
                 } else {
-                    alert("Erreur lors de la sauvegarde (nom déjà pris ?)");
+                    const data = await res.json().catch(() => ({}));
+                    alert("Erreur lors de la sauvegarde: " + (data.error || "Nom de profil déjà existant"));
                 }
             } catch (err) {
                 alert("Erreur réseau: " + err);
@@ -637,9 +648,17 @@ if (addProfileBtn) {
     });
 }
 
+const importCsvBtn = document.getElementById('import-csv-btn');
+if (importCsvBtn) {
+    importCsvBtn.addEventListener('click', () => {
+        const csvEl = document.getElementById('csv-upload') || document.getElementById('csv-file-input');
+        if (csvEl) csvEl.click();
+    });
+}
+
 let pendingBulkProfiles = [];
 
-const csvUpload = document.getElementById('csv-upload');
+const csvUpload = document.getElementById('csv-upload') || document.getElementById('csv-file-input');
 if (csvUpload) {
     csvUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
