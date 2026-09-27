@@ -191,6 +191,7 @@ loginBtn.addEventListener('click', async () => {
             const data = await res.json();
             currentUser = pseudo;
             currentPassword = password;
+            window.currentUserStreak = data.current_streak || 0;
             localStorage.setItem('userPseudo', currentUser);
             localStorage.setItem('userPassword', currentPassword);
             if (data.has_accepted_rules !== undefined) {
@@ -245,6 +246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
                 currentUser = savedPseudo;
                 currentPassword = savedPassword;
+                window.currentUserStreak = data.current_streak || 0;
                 if (data.has_accepted_rules !== undefined) {
                     window.hasAcceptedRules = data.has_accepted_rules;
                 } else {
@@ -261,14 +263,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-async function startGame() {
-    authSection.classList.add('hidden');
-    gameSection.classList.remove('hidden');
-    userInfo.classList.remove('hidden');
-    if (document.getElementById('main-nav')) {
-        document.getElementById('main-nav').classList.remove('hidden');
-    }
-    
+function updateHeaderPseudo() {
+    if (!currentUser || !currentPseudoSpan) return;
     let headerPseudo = currentUser;
     if (window.currentUserStreak && window.currentUserStreak > 1) {
         let level = 0;
@@ -278,6 +274,17 @@ async function startGame() {
         headerPseudo += ` <span class="streak-flame streak-level-${level}" title="Série : ${window.currentUserStreak}">🔥${window.currentUserStreak}</span>`;
     }
     currentPseudoSpan.innerHTML = headerPseudo;
+}
+
+async function startGame() {
+    authSection.classList.add('hidden');
+    gameSection.classList.remove('hidden');
+    userInfo.classList.remove('hidden');
+    if (document.getElementById('main-nav')) {
+        document.getElementById('main-nav').classList.remove('hidden');
+    }
+    
+    updateHeaderPseudo();
 
     
     hasSubmittedScore = false;
@@ -371,11 +378,10 @@ async function syncState() {
         }
 
         const isLateActive = !!(data.late_session && data.late_session.is_active);
-        const lateNum = (data.late_session && data.late_session.session_number) ? ` #${data.late_session.session_number}` : '';
         if (isLateActive) {
             if (lateSessionBanner) {
                 lateSessionBanner.classList.remove('hidden');
-                lateSessionBanner.innerHTML = `⏰ Session Retardataires${lateNum} en cours ! Temps restant : <span id="late-timer">${formatTime(data.late_session.time_left || 0)}</span> (5 pts par case validée)`;
+                lateSessionBanner.innerHTML = `⏰ Session Retardataires en cours ! Temps restant : <span id="late-timer">${formatTime(data.late_session.time_left || 0)}</span> (5 pts par case validée)`;
             }
         } else {
             if (lateSessionBanner) {
@@ -392,7 +398,7 @@ async function syncState() {
                     gridLocked = false;
                     document.getElementById('bingo-grid').classList.remove('locked-grid');
                     validateGridBtn.disabled = false;
-                    gameMessage.textContent = `⏰ Session Retardataires${lateNum} active ! Cochez max 5 cases et validez (5 pts/case).`;
+                    gameMessage.textContent = `⏰ Session Retardataires en cours ! Cochez max 5 cases et validez (5 pts/case).`;
                     gameMessage.style.color = "#e67e22";
                     gameMessage.style.fontWeight = "bold";
                 } else {
@@ -411,7 +417,7 @@ async function syncState() {
                 if(!hasSubmittedScore) {
                     validateGridBtn.disabled = false;
                     if (isLateActive) {
-                        gameMessage.textContent = `⏰ Session Retardataires${lateNum} en cours ! Cochez max 5 cases et validez (5 pts/case).`;
+                        gameMessage.textContent = `⏰ Session Retardataires en cours ! Cochez max 5 cases et validez (5 pts/case).`;
                         gameMessage.style.color = "#e67e22";
                         gameMessage.style.fontWeight = "bold";
                     } else {
@@ -560,6 +566,10 @@ validateGridBtn.addEventListener('click', async () => {
         const data = await res.json();
         if (res.ok) {
             hasSubmittedScore = true;
+            if (data.current_streak !== undefined) {
+                window.currentUserStreak = data.current_streak;
+                updateHeaderPseudo();
+            }
             if (data.is_late) {
                 gameMessage.style.color = "#e67e22";
                 gameMessage.textContent = "Grille enregistrée en session Retardataire (5 pts par case validée) ! En attente de la vérification finale...";
@@ -749,6 +759,8 @@ async function loadUserStats() {
                 document.getElementById('my-max-streak').textContent = maxStreak;
                 document.getElementById('my-streak-flame').style.display = currentStreak > 0 ? 'inline' : 'none';
             }
+            window.currentUserStreak = currentStreak;
+            updateHeaderPseudo();
             
             // Calcul Taux de Réussite
             let accuracy = 0;

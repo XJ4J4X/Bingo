@@ -171,6 +171,22 @@ def init_db():
             count INTEGER DEFAULT 0
         )
     ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS live_participations (
+            user_id INTEGER,
+            live_id INTEGER,
+            PRIMARY KEY (user_id, live_id)
+        )
+    ''')
+    try:
+        c.execute('SELECT id, last_live_id FROM users WHERE last_live_id > 0')
+        for uid, lid in c.fetchall():
+            c.execute('SELECT 1 FROM live_participations WHERE user_id = ? AND live_id = ?', (uid, lid))
+            if not c.fetchone():
+                c.execute('INSERT INTO live_participations (user_id, live_id) VALUES (?, ?)', (uid, lid))
+    except Exception:
+        pass
     
     c.execute('SELECT COUNT(*) FROM phrases')
     if c.fetchone()[0] == 0:
@@ -202,6 +218,29 @@ def check_admin(headers):
     if admin:
         return {'id': admin[0], 'role': admin[1]}
     return None
+
+def get_eff_streak_checker(c):
+    is_active = game_state.get('is_active', False)
+    try:
+        c.execute('SELECT DISTINCT live_id FROM live_participations ORDER BY live_id DESC LIMIT 2')
+        recent_lives = [r[0] for r in c.fetchall()]
+    except Exception:
+        recent_lives = []
+
+    def eff_streak(streak, last_live):
+        if not streak or not last_live:
+            return 0
+        if not recent_lives:
+            return streak
+        if is_active:
+            if last_live in recent_lives:
+                return streak
+        else:
+            if last_live >= recent_lives[0]:
+                return streak
+        return 0
+
+    return eff_streak
 
 class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -247,13 +286,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, color, wins, score, current_streak, max_streak, font_family FROM users ORDER BY LOWER(pseudo) ASC')
+            eff_streak = get_eff_streak_checker(c)
+            c.execute('SELECT pseudo, color, wins, score, current_streak, max_streak, font_family, last_live_id FROM users ORDER BY LOWER(pseudo) ASC')
             all_users = [{
                 'pseudo': row[0],
                 'color': row[1],
                 'wins': row[2] or 0,
                 'score': row[3] or 0,
-                'streak': row[4] or 0,
+                'streak': eff_streak(row[4] or 0, row[7] or 0),
                 'max_streak': row[5] or 0,
                 'font_family': row[6] or ''
             } for row in c.fetchall()]
@@ -266,14 +306,9 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             
-            curr_live = game_state.get('current_live_id', 0)
-            def eff_streak(streak, last_live):
-                if not curr_live or not last_live: return 0
-                if last_live < curr_live - 1: return 0
-                return streak or 0
-
             conn = get_db_connection()
             c = conn.cursor()
+            eff_streak = get_eff_streak_checker(c)
             c.execute('SELECT pseudo, score, color, current_streak, font_family, last_live_id FROM users ORDER BY score DESC LIMIT 50')
             top_score = [{'pseudo': row[0], 'score': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
@@ -298,12 +333,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct, has_accepted_rules, current_streak, font_family FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT score, wins, lives_participated, boxes_checked, boxes_correct, has_accepted_rules, current_streak, font_family, last_live_id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             
             c.execute('SELECT phrase, count FROM phrase_stats ORDER BY count DESC LIMIT 5')
             phrs = [{"phrase": p[0], "count": p[1]} for p in c.fetchall()]
             if user:
+                eff_streak = get_eff_streak_checker(c)
+                current_streak_val = eff_streak(user[6] or 0, user[8] or 0)
                 c.execute('SELECT max_streak FROM users WHERE pseudo = ?', (pseudo,))
                 max_streak_val = c.fetchone()[0] or 0
 
@@ -325,7 +362,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     "boxes_checked": user[3],
                     "boxes_correct": user[4],
                     "has_accepted_rules": bool(user[5]),
-                    "current_streak": user[6] or 0,
+                    "current_streak": current_streak_val,
                     "font_family": user[7] or '',
                     "max_streak": max_streak_val,
                     "total_lives": total_lives,
@@ -507,18 +544,15 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
                 return
 
-            # Démarrage ou relance de la session retardataires sans toucher au chrono principal
-            curr_num = game_state.get("late_session", {}).get("session_number", 0) + 1
             game_state["late_session"] = {
                 "is_active": True,
                 "start_time": time.time(),
-                "duration": 300,
-                "session_number": curr_num
+                "duration": 300
             }
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'duration': 300, 'session_number': curr_num}).encode('utf-8'))
+            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
 
         elif url_path == '/api/admin/users':
             admin_data = check_admin(self.headers)
@@ -757,18 +791,20 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT color, has_accepted_rules, current_streak FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT color, has_accepted_rules, current_streak, last_live_id FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
-            conn.close()
-
             if user:
+                eff_streak = get_eff_streak_checker(c)
                 color = user[0]
                 has_accepted = user[1]
+                login_streak = eff_streak(user[2] or 0, user[3] or 0)
+                conn.close()
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'token': pseudo, 'color': color, 'has_accepted_rules': bool(has_accepted)}).encode('utf-8'))
+                self.wfile.write(json.dumps({'success': True, 'token': pseudo, 'color': color, 'has_accepted_rules': bool(has_accepted), 'current_streak': login_streak}).encode('utf-8'))
             else:
+                conn.close()
                 self.send_response(401)
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Invalid credentials'}).encode('utf-8'))
@@ -803,17 +839,15 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
                 return
 
-            curr_num = game_state.get("late_session", {}).get("session_number", 0) + 1
             game_state["late_session"] = {
                 "is_active": True,
                 "start_time": time.time(),
-                "duration": 300,
-                "session_number": curr_num
+                "duration": 300
             }
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'duration': 300, 'session_number': curr_num}).encode('utf-8'))
+            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
             return
 
         elif url_path == '/api/score':
@@ -856,28 +890,33 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if late_active or (main_time_left == 0 or game_state.get("is_locked", False)):
                     is_late_sub = True
 
-                # Update streak if the game is active OR late session is active
-                if game_state.get("is_active") or late_active:
-                    c.execute('SELECT current_streak, max_streak, last_live_id FROM users WHERE id = ?', (user[0],))
-                    streak_info = c.fetchone()
-                    if streak_info:
-                        curr_streak, m_streak, last_live = streak_info
-                        curr_streak = curr_streak or 0
-                        m_streak = m_streak or 0
-                        last_live = last_live or 0
-                        curr_live = game_state.get('current_live_id', 0)
-                        
-                        if curr_live > 0 and last_live != curr_live:
-                            if last_live == curr_live - 1:
-                                curr_streak += 1
-                            else:
-                                curr_streak = 1
-                            
-                            m_streak = max(m_streak, curr_streak)
-                            last_live = curr_live
-                            
-                            c.execute('UPDATE users SET current_streak = ?, max_streak = ?, last_live_id = ? WHERE id = ?', 
-                                      (curr_streak, m_streak, last_live, user[0]))
+                # Update streak and record participation
+                curr_live = game_state.get('current_live_id', 0)
+                new_streak = 0
+                if curr_live > 0:
+                    c.execute('SELECT 1 FROM live_participations WHERE user_id = ? AND live_id = ?', (user[0], curr_live))
+                    if not c.fetchone():
+                        c.execute('INSERT INTO live_participations (user_id, live_id) VALUES (?, ?)', (user[0], curr_live))
+
+                    c.execute('SELECT DISTINCT live_id FROM live_participations ORDER BY live_id DESC')
+                    all_played_lives = [r[0] for r in c.fetchall()]
+
+                    c.execute('SELECT live_id FROM live_participations WHERE user_id = ?', (user[0],))
+                    user_played_set = set(r[0] for r in c.fetchall())
+
+                    for l_id in all_played_lives:
+                        if l_id in user_played_set:
+                            new_streak += 1
+                        else:
+                            break
+
+                    c.execute('SELECT max_streak FROM users WHERE id = ?', (user[0],))
+                    m_row = c.fetchone()
+                    current_max = m_row[0] if (m_row and m_row[0]) else 0
+                    new_max = max(current_max, new_streak)
+
+                    c.execute('UPDATE users SET current_streak = ?, max_streak = ?, last_live_id = ? WHERE id = ?', 
+                              (new_streak, new_max, curr_live, user[0]))
 
                 if (game_state.get("is_active") or late_active) and game_state.get("verification_mode") == "strict":
                     boxes_checked = len(checked_phrases)
@@ -889,7 +928,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({'success': True, 'pending': True, 'is_late': is_late_sub}).encode('utf-8'))
+                    self.wfile.write(json.dumps({'success': True, 'pending': True, 'is_late': is_late_sub, 'current_streak': new_streak}).encode('utf-8'))
                     return
 
                 boxes_checked = len(checked_phrases)
@@ -914,7 +953,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True, 'new_score': new_score}).encode('utf-8'))
+                self.wfile.write(json.dumps({'success': True, 'new_score': new_score, 'current_streak': new_streak}).encode('utf-8'))
             else:
                 conn.close()
                 self.send_response(401)
@@ -1008,7 +1047,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 c = conn.cursor()
                 # Reset score_live for all users when a new live starts
                 c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL, is_late = 0, submitted_at = 0')
-                game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300, "session_number": 0}
+                game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300}
                 c.execute('INSERT INTO lives DEFAULT VALUES')
                 c.execute('SELECT MAX(id) FROM lives')
                 max_live = c.fetchone()[0]
