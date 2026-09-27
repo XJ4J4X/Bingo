@@ -388,6 +388,15 @@ async function syncState() {
                 lateSessionBanner.classList.add('hidden');
             }
         }
+
+        const testModeBanner = document.getElementById('test-mode-banner');
+        if (data.is_test && isGameActive) {
+            if (testModeBanner) testModeBanner.classList.remove('hidden');
+            window.isTestLive = true;
+        } else {
+            if (testModeBanner) testModeBanner.classList.add('hidden');
+            window.isTestLive = false;
+        }
         
         if (isGameActive) {
             timerDisplay.textContent = formatTime(timeLeft);
@@ -591,7 +600,22 @@ validateGridBtn.addEventListener('click', async () => {
                 window.currentUserStreak = data.current_streak;
                 updateHeaderPseudo();
             }
-            if (data.is_late) {
+            if (data.is_test) {
+                gameMessage.style.color = "#8e44ad";
+                gameMessage.textContent = "🧪 Grille enregistrée (Mode Test) ! Vos stats réelles et flammes 🔥 restent intactes.";
+                try {
+                    const audio = new Audio('ting.mp3');
+                    audio.play();
+                } catch (e) { }
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 80,
+                        spread: 60,
+                        origin: { y: 0.6 },
+                        colors: ['#a855f7', '#ffffff', '#3b82f6']
+                    });
+                }
+            } else if (data.is_late) {
                 gameMessage.style.color = "#e67e22";
                 gameMessage.textContent = "Grille enregistrée en session Retardataire (5 pts par case validée) ! En attente de la vérification finale...";
             } else if (data.pending) {

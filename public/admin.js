@@ -168,20 +168,35 @@ async function syncGameState() {
         const adminTriggerLateBtn = document.getElementById('admin-trigger-late-btn');
         const adminLateTimerDisplay = document.getElementById('admin-late-timer-display');
         const adminLateTime = document.getElementById('admin-late-time');
+        const testBanner = document.getElementById('admin-test-mode-banner');
+
+        if (data.is_test) {
+            if (testBanner) testBanner.classList.remove('hidden');
+        } else {
+            if (testBanner) testBanner.classList.add('hidden');
+        }
         
         if (data.is_active) {
             if (startGameBtn) startGameBtn.classList.add('hidden');
             if (stopGameBtn) stopGameBtn.classList.remove('hidden');
             if (adminTriggerLateBtn) adminTriggerLateBtn.classList.remove('hidden');
 
-            if (data.is_locked) {
+            if (data.is_test) {
+                gameStatus.textContent = "🧪 Mode Test en cours" + (data.is_locked ? " (Vérification)" : " (Jeu)");
+                gameStatus.style.background = "#8e44ad";
+                gameStatus.style.color = "white";
+                document.getElementById('stop-game-btn').textContent = "Arrêter le Mode Test";
+                document.getElementById('stop-game-btn').className = "btn danger-btn";
+            } else if (data.is_locked) {
                 gameStatus.textContent = "Verrouillé (Vérification)";
                 gameStatus.style.color = "orange";
+                gameStatus.style.background = "#eee";
                 document.getElementById('stop-game-btn').textContent = "Terminer & Valider les Scores";
                 document.getElementById('stop-game-btn').className = "btn success-btn";
             } else {
                 gameStatus.textContent = "En cours (Jeu)";
                 gameStatus.style.color = "green";
+                gameStatus.style.background = "#eee";
                 document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
                 document.getElementById('stop-game-btn').className = "btn danger-btn";
             }
@@ -190,7 +205,7 @@ async function syncGameState() {
             if(lcs) { lcs.style.display = 'block'; lcs.classList.remove('hidden'); }
             loadLiveData();
             const now = Date.now();
-            if (!window.lastAdminSubmissionsFetch || (now - window.lastAdminSubmissionsFetch > 3000)) {
+            if (!window.lastAdminSubmissionsFetch || (now - window.lastAdminSubmissionsFetch > 2500)) {
                 window.lastAdminSubmissionsFetch = now;
                 loadSubmissionsData();
             }
@@ -201,6 +216,7 @@ async function syncGameState() {
 
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
+            gameStatus.style.background = "#eee";
             timerDisplay.textContent = "00:00";
             const lcs2 = document.getElementById('live-control-section'); 
             if(lcs2) { lcs2.style.display = 'none'; lcs2.classList.add('hidden'); }
@@ -233,37 +249,87 @@ async function syncGameState() {
     }
 }
 
+let allAdminSubmissions = [];
+
 async function loadSubmissionsData() {
     try {
         const res = await fetch('/api/game/submissions?t=' + Date.now());
         if (!res.ok) return;
         const list = await res.json();
+        allAdminSubmissions = list || [];
         
         const countSpan = document.getElementById('admin-submissions-count');
-        const container = document.getElementById('admin-submissions-list');
-        if (countSpan) countSpan.textContent = list.length;
-        if (!container) return;
-        
-        if (list.length === 0) {
-            container.innerHTML = '<span style="color: #95a5a6; font-size: 0.9em;">En attente de validations...</span>';
-            return;
-        }
-        
-        container.innerHTML = '';
-        list.forEach(sub => {
-            const chip = document.createElement('div');
-            chip.style = "background: white; border: 1px solid #dee2e6; border-radius: 20px; padding: 6px 14px; font-size: 0.9rem; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);";
-            
-            let colorDot = sub.color ? `<span style="width: 10px; height: 10px; border-radius: 50%; background: ${sub.color}; display: inline-block;"></span>` : '';
-            let lateTag = sub.is_late ? `<span style="background: #e67e22; color: white; border-radius: 10px; font-size: 0.7rem; padding: 2px 6px;">⏰ Retardataire</span>` : '';
-            let countTag = `<span style="background: #ecf0f1; color: #2c3e50; border-radius: 10px; font-size: 0.75rem; padding: 2px 6px;">${sub.count}/5</span>`;
-            
-            chip.innerHTML = `${colorDot}<span>${sub.pseudo}</span> ${countTag} ${lateTag}`;
-            container.appendChild(chip);
-        });
+        if (countSpan) countSpan.textContent = allAdminSubmissions.length;
+
+        renderAdminSubmissionsTable();
     } catch (err) {
         console.error("Erreur submissions", err);
     }
+}
+
+function renderAdminSubmissionsTable() {
+    const tableBody = document.getElementById('admin-submissions-table-body');
+    if (!tableBody) return;
+
+    const searchInput = document.getElementById('admin-sub-search');
+    const filterQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    const filtered = allAdminSubmissions.filter(s => {
+        if (!filterQuery) return true;
+        return (s.pseudo && s.pseudo.toLowerCase().includes(filterQuery));
+    });
+
+    if (filtered.length === 0) {
+        const emptyMsg = filterQuery ? 'Aucun joueur ne correspond au filtre.' : 'En attente de validations...';
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 22px; color: #94a3b8; font-style: italic;">${emptyMsg}</td></tr>`;
+        return;
+    }
+
+    let rowsHtml = '';
+    filtered.forEach((sub, idx) => {
+        const rank = idx + 1;
+        let rankBadge = `<span style="font-weight: 800; color: #475569;">#${rank}</span>`;
+        if (rank === 1) rankBadge = '<span style="font-size: 1.1rem;">🥇</span>';
+        else if (rank === 2) rankBadge = '<span style="font-size: 1.1rem;">🥈</span>';
+        else if (rank === 3) rankBadge = '<span style="font-size: 1.1rem;">🥉</span>';
+
+        const colorDot = sub.color ? `<span style="width: 10px; height: 10px; border-radius: 50%; background: ${sub.color}; display: inline-block; flex-shrink: 0;"></span>` : '';
+        const streakBadge = (sub.streak && sub.streak > 1) ? ` <span title="Série : ${sub.streak} lives" style="font-size: 0.8rem; background: #fff1f2; color: #e11d48; padding: 1px 6px; border-radius: 10px; border: 1px solid #fecdd3; font-weight: bold;">🔥${sub.streak}</span>` : '';
+
+        const timeStr = sub.submitted_at ? new Date(sub.submitted_at * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--:--';
+
+        const statusBadge = sub.is_late 
+            ? `<span style="background: #fff7ed; color: #ea580c; border: 1px solid #fdba74; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 0.75rem;">⏰ Retardataire</span>`
+            : `<span style="background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 0.75rem;">🟢 Direct</span>`;
+
+        const countBadge = `<span style="background: #e0f2fe; color: #0284c7; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.8rem;">${sub.count || 0}/5</span>`;
+
+        let phrasesHtml = '';
+        if (sub.phrases && sub.phrases.length > 0) {
+            phrasesHtml = sub.phrases.map(p => `<span style="display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 2px 7px; border-radius: 4px; font-size: 0.78rem; margin: 2px;">${p}</span>`).join(' ');
+        } else {
+            phrasesHtml = '<span style="color: #94a3b8; font-style: italic; font-size: 0.8rem;">Non détaillées</span>';
+        }
+
+        rowsHtml += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 12px; text-align: center;">${rankBadge}</td>
+                <td style="padding: 10px 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${colorDot}
+                        <strong style="color: ${sub.color || '#1e293b'}; font-size: 0.95rem;">${sub.pseudo}</strong>
+                        ${streakBadge}
+                    </div>
+                </td>
+                <td style="padding: 10px 12px; font-family: monospace; color: #64748b; font-size: 0.85rem;">${timeStr}</td>
+                <td style="padding: 10px 12px;">${statusBadge}</td>
+                <td style="padding: 10px 12px; text-align: center;">${countBadge}</td>
+                <td style="padding: 10px 12px;">${phrasesHtml}</td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = rowsHtml;
 }
 
 async function loadLiveData() {
@@ -329,6 +395,8 @@ if(startGameBtn) startGameBtn.addEventListener('click', async () => {
     
     const profileId = document.getElementById('profile-select').value;
     const verificationMode = document.getElementById('verification-mode').value;
+    const testModeToggle = document.getElementById('test-mode-toggle');
+    const isTest = testModeToggle ? testModeToggle.checked : false;
     
     await fetchWithAuth('/api/admin/game/start', {
         method: 'POST',
@@ -337,11 +405,26 @@ if(startGameBtn) startGameBtn.addEventListener('click', async () => {
             duration: durationSecs, 
             lock_duration: lockDurationSecs,
             profile_id: profileId, 
-            verification_mode: verificationMode 
+            verification_mode: verificationMode,
+            is_test: isTest
         })
     });
     syncGameState();
 });
+
+const adminSubSearchEl = document.getElementById('admin-sub-search');
+if (adminSubSearchEl) {
+    adminSubSearchEl.addEventListener('input', () => {
+        renderAdminSubmissionsTable();
+    });
+}
+
+const adminRefreshSubsBtnEl = document.getElementById('admin-refresh-subs-btn');
+if (adminRefreshSubsBtnEl) {
+    adminRefreshSubsBtnEl.addEventListener('click', () => {
+        loadSubmissionsData();
+    });
+}
 
 if(stopGameBtn) stopGameBtn.addEventListener('click', async () => {
     await fetchWithAuth('/api/admin/game/stop', { method: 'POST' });

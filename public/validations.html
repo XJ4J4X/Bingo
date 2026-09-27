@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Dock - Validations Bingo</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0f1117;
+            color: #f1f5f9;
+            padding: 12px;
+            font-size: 13px;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* En-tête Dock */
+        .dock-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            gap: 8px;
+        }
+        .dock-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #ffffff;
+        }
+        .dock-title img {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            display: inline-block;
+        }
+        .pulse {
+            animation: pulse-dot 1.4s infinite;
+        }
+        @keyframes pulse-dot {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .status-offline { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); }
+        .status-active  { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+        .status-test    { background: rgba(155, 89, 182, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .status-late    { background: rgba(230, 126, 34, 0.15); color: #e67e22; border: 1px solid rgba(230, 126, 34, 0.3); }
+
+        /* Carte compteur */
+        .counter-card {
+            background: #181b24;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .counter-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .counter-icon {
+            font-size: 22px;
+        }
+        .counter-number {
+            font-size: 22px;
+            font-weight: 900;
+            color: #38bdf8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            line-height: 1;
+        }
+        .counter-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .sound-toggle-btn {
+            background: #232733;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .sound-toggle-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
+
+        /* Tableau des validations */
+        .table-container {
+            background: #14161f;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: calc(100vh - 120px);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        thead th {
+            background: #1b1e2a;
+            color: #94a3b8;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 10px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.15s;
+        }
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        tbody tr.new-sub {
+            animation: highlight-sub 2s ease-out;
+        }
+        @keyframes highlight-sub {
+            0% { background: rgba(56, 189, 248, 0.35); }
+            100% { background: transparent; }
+        }
+
+        td {
+            padding: 8px 10px;
+            vertical-align: middle;
+            font-size: 12px;
+        }
+        .col-rank {
+            width: 32px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 13px;
+        }
+        .col-player {
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .player-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .col-time {
+            width: 65px;
+            color: #94a3b8;
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            font-size: 11px;
+            text-align: right;
+        }
+        .col-badge {
+            width: 65px;
+            text-align: right;
+        }
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .tag-normal {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+        .tag-late {
+            background: rgba(230, 126, 34, 0.15);
+            color: #f39c12;
+            border: 1px solid rgba(230, 126, 34, 0.3);
+        }
+
+        .empty-state {
+            padding: 30px 15px;
+            text-align: center;
+            color: #64748b;
+            font-style: italic;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dock-header">
+        <div class="dock-title">
+            <img src="favicon.png" alt="Logo">
+            <span>BINGO VALIDATIONS</span>
+        </div>
+        <span id="dock-status" class="status-badge status-offline">
+            <span class="status-dot"></span>
+            <span id="dock-status-text">HORS LIGNE</span>
+        </span>
+    </div>
+
+    <div class="counter-card">
+        <div class="counter-left">
+            <span class="counter-icon">🏆</span>
+            <div>
+                <div id="sub-counter" class="counter-number">0</div>
+                <div class="counter-label">Grilles reçues</div>
+            </div>
+        </div>
+        <button id="sound-btn" class="sound-toggle-btn active" title="Activer/Désactiver le bip sonore lors d'un nouveau Bingo">
+            <span id="sound-icon">🔔</span>
+            <span>Bip</span>
+        </button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 32px; text-align: center;">#</th>
+                    <th>Joueur</th>
+                    <th style="width: 65px; text-align: right;">Heure</th>
+                    <th style="width: 65px; text-align: right;">Statut</th>
+                </tr>
+            </thead>
+            <tbody id="validations-body">
+                <tr>
+                    <td colspan="4" class="empty-state">
+                        En attente du live ou de validations...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let lastKnownCount = 0;
+        let soundEnabled = true;
+        let lastSubIds = new Set();
+        let audioCtx = null;
+
+        const soundBtn = document.getElementById('sound-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        soundBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundBtn.classList.add('active');
+                soundIcon.textContent = '🔔';
+                playBeep(600, 0.08);
+            } else {
+                soundBtn.classList.remove('active');
+                soundIcon.textContent = '🔕';
+            }
+        });
+
+        function playBeep(freq = 780, dur = 0.12) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + dur);
+            } catch (e) {
+                console.error("Audio beep error", e);
+            }
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) return '--:--:--';
+            const d = new Date(timestamp * 1000);
+            const h = d.getHours().toString().padStart(2, '0');
+            const m = d.getMinutes().toString().padStart(2, '0');
+            const s = d.getSeconds().toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        async function updateDock() {
+            try {
+                // 1. État du jeu
+                const stateRes = await fetch('/api/game/state?t=' + Date.now());
+                if (!stateRes.ok) return;
+                const stateData = await stateRes.json();
+
+                const statusBadge = document.getElementById('dock-status');
+                const statusText = document.getElementById('dock-status-text');
+                const dot = statusBadge.querySelector('.status-dot');
+
+                if (!stateData.is_active) {
+                    statusBadge.className = "status-badge status-offline";
+                    statusText.textContent = "HORS LIGNE";
+                    dot.className = "status-dot";
+                } else if (stateData.is_test) {
+                    statusBadge.className = "status-badge status-test";
+                    statusText.textContent = "🧪 TEST";
+                    dot.className = "status-dot pulse";
+                } else if (stateData.late_session && stateData.late_session.is_active) {
+                    statusBadge.className = "status-badge status-late";
+                    statusText.textContent = "⏰ RETARD";
+                    dot.className = "status-dot pulse";
+                } else {
+                    statusBadge.className = "status-badge status-active";
+                    statusText.textContent = stateData.is_locked ? "VÉRIF" : "EN DIRECT";
+                    dot.className = "status-dot pulse";
+                }
+
+                // 2. Grilles soumises
+                const subsRes = await fetch('/api/game/submissions?t=' + Date.now());
+                if (!subsRes.ok) return;
+                const subs = await subsRes.json();
+
+                const counter = document.getElementById('sub-counter');
+                counter.textContent = subs.length;
+
+                const tbody = document.getElementById('validations-body');
+
+                if (!subs || subs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">${stateData.is_active ? "En attente de la première grille..." : "En attente du prochain live..."}</td></tr>`;
+                    lastKnownCount = 0;
+                    lastSubIds.clear();
+                    return;
+                }
+
+                // Si de nouvelles validations sont arrivées, jouer un petit son
+                if (subs.length > lastKnownCount && lastKnownCount > 0) {
+                    playBeep(880, 0.15);
+                    setTimeout(() => playBeep(1174, 0.2), 120);
+                }
+                lastKnownCount = subs.length;
+
+                let html = '';
+                subs.forEach((s, idx) => {
+                    const rank = idx + 1;
+                    let rankIcon = `#${rank}`;
+                    if (rank === 1) rankIcon = '🥇';
+                    else if (rank === 2) rankIcon = '🥈';
+                    else if (rank === 3) rankIcon = '🥉';
+
+                    const dotColor = s.color || '#3b82f6';
+                    const flame = (s.streak && s.streak > 1) ? ` <span title="Série : ${s.streak} lives" style="font-size: 11px;">🔥${s.streak}</span>` : '';
+                    const tagClass = s.is_late ? 'tag-late' : 'tag-normal';
+                    const tagText = s.is_late ? 'RETARD' : 'DIRECT';
+
+                    const subKey = `${s.pseudo}_${s.submitted_at}`;
+                    const isNew = !lastSubIds.has(subKey);
+
+                    html += `
+                        <tr class="${isNew ? 'new-sub' : ''}">
+                            <td class="col-rank">${rankIcon}</td>
+                            <td>
+                                <div class="col-player">
+                                    <span class="player-dot" style="background: ${dotColor};"></span>
+                                    <span style="color: ${s.color ? s.color : '#ffffff'};">${s.pseudo}</span>
+                                    ${flame}
+                                </div>
+                            </td>
+                            <td class="col-time">${formatTime(s.submitted_at)}</td>
+                            <td class="col-badge">
+                                <span class="tag ${tagClass}">${tagText}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                // Enregistrer les clés actuelles
+                lastSubIds = new Set(subs.map(s => `${s.pseudo}_${s.submitted_at}`));
+                tbody.innerHTML = html;
+
+            } catch (err) {
+                console.error("Erreur sync validations OBS", err);
+            }
+        }
+
+        updateDock();
+        setInterval(updateDock, 2000);
+    </script>
+</body>
+</html>

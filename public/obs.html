@@ -48,6 +48,7 @@
         .status-offline { background: #e74c3c; color: white; }
         .status-active { background: #2ecc71; color: white; }
         .status-locked { background: #f39c12; color: white; }
+        .status-test { background: #8e44ad; color: white; }
 
         .stat-card {
             background: #1c212b;
@@ -157,8 +158,19 @@
         <span>⏰ LANCER RETARDATAIRES (5 MIN)</span>
     </button>
     <div id="dock-msg" class="msg-box"></div>
+
+    <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #8c9ba5;">Validations (<span id="obs-subs-badge-count">0</span>)</span>
+            <a href="validations.html" target="_blank" style="font-size: 11px; color: #38bdf8; text-decoration: none; font-weight: 600;">Dock dédié ↗</a>
+        </div>
+        <div id="obs-subs-list" style="max-height: 160px; overflow-y: auto; background: #181b24; border-radius: 6px; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.05); font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <span style="color: #64748b; font-style: italic; font-size: 11px; text-align: center; padding: 10px 0;">Aucune validation pour l'instant</span>
+        </div>
+    </div>
+
     <div style="text-align: center; margin-top: 14px; font-size: 11px; color: #5a6673;">
-        Fait avec amour par J4X ❤️ - Version 2.3.1
+        Fait avec amour par J4X ❤️ - Version 2.4.0
     </div>
 
     <script>
@@ -196,7 +208,10 @@
                     btnLate.disabled = true;
                 } else {
                     btnLate.disabled = false;
-                    if (data.is_locked) {
+                    if (data.is_test) {
+                        statusBadge.textContent = "🧪 MODE TEST";
+                        statusBadge.className = "status-badge status-test";
+                    } else if (data.is_locked) {
                         statusBadge.textContent = "VÉRIFICATION";
                         statusBadge.className = "status-badge status-locked";
                     } else {
@@ -204,6 +219,16 @@
                         statusBadge.className = "status-badge status-active";
                     }
                     mainTimer.textContent = formatTime(data.time_left);
+                }
+
+                // Charger la liste des validations en direct
+                if (data.is_active) {
+                    loadObsSubmissions();
+                } else {
+                    const listEl = document.getElementById('obs-subs-list');
+                    if (listEl) listEl.innerHTML = '<span style="color: #64748b; font-style: italic; font-size: 11px; text-align: center; padding: 10px 0;">Live inactif</span>';
+                    const badgeCount = document.getElementById('obs-subs-badge-count');
+                    if (badgeCount) badgeCount.textContent = '0';
                 }
 
                 if (data.late_session && data.late_session.is_active) {
@@ -251,8 +276,58 @@
             }
         });
 
+        let lastObsSubsCount = -1;
+        async function loadObsSubmissions() {
+            try {
+                const res = await fetch('/api/game/submissions?t=' + Date.now());
+                if (!res.ok) return;
+                const subs = await res.json();
+                
+                const badgeCount = document.getElementById('obs-subs-badge-count');
+                if (badgeCount) badgeCount.textContent = subs.length;
+
+                if (subs.length === lastObsSubsCount) return;
+                lastObsSubsCount = subs.length;
+
+                const listEl = document.getElementById('obs-subs-list');
+                if (!listEl) return;
+
+                if (!subs || subs.length === 0) {
+                    listEl.innerHTML = '<span style="color: #64748b; font-style: italic; font-size: 11px; text-align: center; padding: 10px 0;">Aucune validation</span>';
+                    return;
+                }
+
+                let html = '';
+                subs.forEach((s, idx) => {
+                    const rank = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : `#${idx + 1}`));
+                    const dotColor = s.color || '#3b82f6';
+                    const tag = s.is_late 
+                        ? '<span style="background: rgba(230,126,34,0.2); color: #f39c12; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700;">⏰ RETARD</span>'
+                        : '<span style="background: rgba(46,204,113,0.2); color: #2ecc71; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 700;">✓ DIRECT</span>';
+                    const timeStr = s.submitted_at ? new Date(s.submitted_at * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                    
+                    html += `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                            <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span style="font-weight: 800; font-size: 11px;">${rank}</span>
+                                <span style="width: 7px; height: 7px; border-radius: 50%; background: ${dotColor}; flex-shrink: 0;"></span>
+                                <span style="font-weight: 700; color: ${s.color || '#fff'}; font-size: 12px;">${s.pseudo}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                <span style="color: #64748b; font-family: monospace; font-size: 10px;">${timeStr}</span>
+                                ${tag}
+                            </div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                console.error("Erreur chargement subs OBS", e);
+            }
+        }
+
         syncObsState();
-        setInterval(syncObsState, 1000);
+        setInterval(syncObsState, 1500);
     </script>
 </body>
 </html>

@@ -60,6 +60,7 @@ DEFAULT_PHRASES = [
 game_state = {
     "is_active": False,
     "is_locked": False,
+    "is_test": False,
     "start_time": None,
     "duration": 600,
     "lock_duration": 0,
@@ -223,7 +224,7 @@ def check_admin(headers):
     return None
 
 def get_eff_streak_checker(c):
-    is_active = game_state.get('is_active', False)
+    is_active = game_state.get('is_active', False) and not game_state.get('is_test', False)
     try:
         c.execute('SELECT DISTINCT live_id FROM live_participations ORDER BY live_id DESC LIMIT 2')
         recent_lives = [r[0] for r in c.fetchall()]
@@ -277,6 +278,30 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     self.send_header('Content-type', 'text/css; charset=utf-8')
                 else:
                     self.send_header('Content-type', 'application/javascript; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception:
+                self.send_error(404, "File not found")
+            return
+
+        if url_path in ('/obs', '/obs/', '/obs.html'):
+            try:
+                with open('public/obs.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception:
+                self.send_error(404, "File not found")
+            return
+
+        if url_path in ('/validations', '/validations/', '/validations.html', '/dock', '/dock/'):
+            try:
+                with open('public/validations.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(content)
             except Exception:
@@ -482,6 +507,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 "is_active": game_state["is_active"],
                 "is_locked": game_state.get("is_locked", False),
+                "is_test": bool(game_state.get("is_test", False)),
                 "time_left": time_left,
                 "late_session": {
                     "is_active": late_active,
@@ -503,18 +529,22 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 try:
                     conn = get_db_connection()
                     c = conn.cursor()
-                    c.execute('SELECT pseudo, color, submitted_grid, is_late, submitted_at FROM users WHERE submitted_grid IS NOT NULL ORDER BY submitted_at ASC, id ASC')
+                    c.execute('SELECT pseudo, color, submitted_grid, is_late, submitted_at, current_streak FROM users WHERE submitted_grid IS NOT NULL ORDER BY submitted_at ASC, id ASC')
                     for r in c.fetchall():
-                        try:
-                            count = len(json.loads(r[2])) if r[2] else 0
-                        except:
-                            count = 0
+                        phrases_list = []
+                        if r[2]:
+                            try:
+                                phrases_list = json.loads(r[2])
+                            except Exception:
+                                phrases_list = []
                         submissions.append({
                             'pseudo': r[0],
                             'color': r[1],
-                            'count': count,
+                            'count': len(phrases_list),
+                            'phrases': phrases_list,
                             'is_late': bool(r[3]),
-                            'submitted_at': r[4] or 0
+                            'submitted_at': r[4] or 0,
+                            'streak': r[5] or 0
                         })
                     conn.close()
                 except Exception:
@@ -869,7 +899,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id, score, submitted_grid FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT id, score, submitted_grid, current_streak FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             
             if user:
@@ -897,6 +927,30 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 main_time_left = max(0, int(game_state.get("duration", 600) - elapsed))
                 if late_active or (main_time_left == 0 or game_state.get("is_locked", False)):
                     is_late_sub = True
+
+                # ==========================================
+                # MODE TEST : AUCUN IMPACT STATS / STREAKS
+                # ==========================================
+                if game_state.get("is_test", False):
+                    now_t = time.time()
+                    c.execute('UPDATE users SET submitted_grid = ?, is_late = ?, submitted_at = ? WHERE id = ?', 
+                              (json.dumps(checked_phrases), 1 if is_late_sub else 0, now_t, user[0]))
+                    conn.commit()
+                    conn.close()
+                    game_state["submissions_count"] = game_state.get("submissions_count", 0) + 1
+                    is_strict = (game_state.get("verification_mode") == "strict")
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'success': True,
+                        'pending': is_strict,
+                        'is_late': is_late_sub,
+                        'current_streak': user[3] or 0,
+                        'is_test': True,
+                        'new_score': user[1]
+                    }).encode('utf-8'))
+                    return
 
                 # Update streak and record participation
                 curr_live = game_state.get('current_live_id', 0)
@@ -1044,8 +1098,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
 
             if url_path == '/api/admin/game/start':
+                is_test = bool(data.get("is_test", False))
                 game_state["is_active"] = True
                 game_state["is_locked"] = False
+                game_state["is_test"] = is_test
                 game_state["start_time"] = time.time()
                 game_state["duration"] = data.get("duration", 600)
                 game_state["lock_duration"] = data.get("lock_duration", 0)
@@ -1061,10 +1117,15 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["submissions_count"] = 0
                 game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300}
                 _leaderboard_cache["data"] = None
-                c.execute('INSERT INTO lives DEFAULT VALUES')
-                c.execute('SELECT MAX(id) FROM lives')
-                max_live = c.fetchone()[0]
-                game_state["current_live_id"] = max_live if max_live else 0
+
+                if not is_test:
+                    c.execute('INSERT INTO lives DEFAULT VALUES')
+                    c.execute('SELECT MAX(id) FROM lives')
+                    max_live = c.fetchone()[0]
+                    game_state["current_live_id"] = max_live if max_live else 0
+                else:
+                    game_state["current_live_id"] = 0
+
                 conn.commit()
                 
                 if profile_id and str(profile_id) != "random":
@@ -1087,15 +1148,34 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                self.wfile.write(json.dumps({'success': True, 'is_test': is_test}).encode('utf-8'))
 
             elif url_path == '/api/admin/game/stop':
+                is_test_mode = bool(game_state.get("is_test", False))
                 game_state["is_active"] = False
                 game_state["is_locked"] = False
+                game_state["is_test"] = False
                 game_state["start_time"] = None
                 game_state["lock_start_time"] = None
                 game_state["late_session"]["is_active"] = False
                 game_state["late_session"]["start_time"] = None
+                game_state["submissions_count"] = 0
+                
+                conn = get_db_connection()
+                c = conn.cursor()
+
+                if is_test_mode:
+                    # En mode test : nettoyage sans toucher aux scores, victoires, participations ni stats de phrases
+                    c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0, score_live = 0')
+                    conn.commit()
+                    conn.close()
+                    _leaderboard_cache["data"] = None
+                    _users_all_cache["data"] = None
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True, 'is_test': True}).encode('utf-8'))
+                    return
                 
                 # Evaluate scores for players who submitted
                 conn = get_db_connection()
