@@ -371,12 +371,11 @@ async function syncState() {
         }
 
         const isLateActive = !!(data.late_session && data.late_session.is_active);
+        const lateNum = (data.late_session && data.late_session.session_number) ? ` #${data.late_session.session_number}` : '';
         if (isLateActive) {
             if (lateSessionBanner) {
                 lateSessionBanner.classList.remove('hidden');
-                if (lateTimer) {
-                    lateTimer.textContent = formatTime(data.late_session.time_left || 0);
-                }
+                lateSessionBanner.innerHTML = `⏰ Session Retardataires${lateNum} en cours ! Temps restant : <span id="late-timer">${formatTime(data.late_session.time_left || 0)}</span> (5 pts par case validée)`;
             }
         } else {
             if (lateSessionBanner) {
@@ -393,7 +392,7 @@ async function syncState() {
                     gridLocked = false;
                     document.getElementById('bingo-grid').classList.remove('locked-grid');
                     validateGridBtn.disabled = false;
-                    gameMessage.textContent = "⏰ Session Retardataires active ! Cochez max 5 cases et validez (5 pts/case).";
+                    gameMessage.textContent = `⏰ Session Retardataires${lateNum} active ! Cochez max 5 cases et validez (5 pts/case).`;
                     gameMessage.style.color = "#e67e22";
                     gameMessage.style.fontWeight = "bold";
                 } else {
@@ -411,9 +410,15 @@ async function syncState() {
                 document.getElementById('bingo-grid').classList.remove('locked-grid');
                 if(!hasSubmittedScore) {
                     validateGridBtn.disabled = false;
-                    gameMessage.textContent = "Live en cours... Cochez max 5 cases et validez !";
-                    gameMessage.style.color = "blue";
-                    gameMessage.style.fontWeight = "normal";
+                    if (isLateActive) {
+                        gameMessage.textContent = `⏰ Session Retardataires${lateNum} en cours ! Cochez max 5 cases et validez (5 pts/case).`;
+                        gameMessage.style.color = "#e67e22";
+                        gameMessage.style.fontWeight = "bold";
+                    } else {
+                        gameMessage.textContent = "Live en cours... Cochez max 5 cases et validez !";
+                        gameMessage.style.color = "blue";
+                        gameMessage.style.fontWeight = "normal";
+                    }
                 }
             }
         } else {
@@ -926,12 +931,15 @@ async function loadAllPlayers() {
         container.innerHTML = '';
         
         if(users.length === 0) {
-            container.innerHTML = '<p style="color: #ffffff; text-shadow: 0 0 4px #fff; font-size: 1.3rem;">Aucun élève inscrit sur le tableau pour le moment.</p>';
+            container.innerHTML = '<p style="color: #ffffff; text-shadow: 0 0 4px #fff; font-size: 1.15rem;">Aucun élève inscrit sur le tableau pour le moment.</p>';
             return;
         }
+
+        // Tri strict de A à Z (insensible à la casse)
+        users.sort((a, b) => (a.pseudo || '').localeCompare(b.pseudo || '', 'fr', { sensitivity: 'base' }));
         
-        users.forEach(u => {
-            const badge = document.createElement('div');
+        users.forEach((u, index) => {
+            const badge = document.createElement('span');
             badge.className = 'chalk-player-badge';
             
             let pseudoDisplay = u.pseudo;
@@ -950,17 +958,18 @@ async function loadAllPlayers() {
             
             let winsBadge = '';
             if (u.wins && u.wins > 0) {
-                winsBadge = `<span class="chalk-stat" title="${u.wins} victoires">👑 ${u.wins}</span>`;
+                winsBadge = ` <span title="${u.wins} victoires">👑</span>`;
             }
             
-            let scoreBadge = `<span class="chalk-stat">${u.score || 0} pts</span>`;
-            
-            badge.innerHTML = `
-                <span class="${pseudoClass}" style="${colorStyle}">${pseudoDisplay}${streakIcon}</span>
-                ${winsBadge}
-                ${scoreBadge}
-            `;
+            badge.innerHTML = `<span class="${pseudoClass}" style="${colorStyle}">${pseudoDisplay}${streakIcon}${winsBadge}</span>`;
             container.appendChild(badge);
+
+            if (index < users.length - 1) {
+                const sep = document.createElement('span');
+                sep.className = 'chalk-sep';
+                sep.textContent = '•';
+                container.appendChild(sep);
+            }
         });
     } catch (err) {
         console.error("Erreur chargement Hall of Fame", err);

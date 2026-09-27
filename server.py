@@ -72,7 +72,8 @@ game_state = {
     "late_session": {
         "is_active": False,
         "start_time": None,
-        "duration": 300
+        "duration": 300,
+        "session_number": 0
     }
 }
 
@@ -246,7 +247,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT pseudo, color, wins, score, current_streak, max_streak, font_family FROM users ORDER BY wins DESC, score DESC, LOWER(pseudo) ASC')
+            c.execute('SELECT pseudo, color, wins, score, current_streak, max_streak, font_family FROM users ORDER BY LOWER(pseudo) ASC')
             all_users = [{
                 'pseudo': row[0],
                 'color': row[1],
@@ -440,7 +441,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "time_left": time_left,
                 "late_session": {
                     "is_active": late_active,
-                    "time_left": late_time_left
+                    "time_left": late_time_left,
+                    "session_number": late_sess.get("session_number", 0)
                 },
                 "submissions_count": sub_count,
                 "verification_mode": game_state.get("verification_mode", "strict"),
@@ -505,16 +507,18 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
                 return
 
-            # Démarrage de la session retardataires sans toucher au chrono principal
+            # Démarrage ou relance de la session retardataires sans toucher au chrono principal
+            curr_num = game_state.get("late_session", {}).get("session_number", 0) + 1
             game_state["late_session"] = {
                 "is_active": True,
                 "start_time": time.time(),
-                "duration": 300
+                "duration": 300,
+                "session_number": curr_num
             }
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
+            self.wfile.write(json.dumps({'success': True, 'duration': 300, 'session_number': curr_num}).encode('utf-8'))
 
         elif url_path == '/api/admin/users':
             admin_data = check_admin(self.headers)
@@ -799,15 +803,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
                 return
 
+            curr_num = game_state.get("late_session", {}).get("session_number", 0) + 1
             game_state["late_session"] = {
                 "is_active": True,
                 "start_time": time.time(),
-                "duration": 300
+                "duration": 300,
+                "session_number": curr_num
             }
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
+            self.wfile.write(json.dumps({'success': True, 'duration': 300, 'session_number': curr_num}).encode('utf-8'))
             return
 
         elif url_path == '/api/score':
@@ -847,7 +853,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
                 elapsed = time.time() - game_state["start_time"] if game_state.get("start_time") else 0
                 main_time_left = max(0, int(game_state.get("duration", 600) - elapsed))
-                if late_active and (main_time_left == 0 or game_state.get("is_locked", False)):
+                if late_active or (main_time_left == 0 or game_state.get("is_locked", False)):
                     is_late_sub = True
 
                 # Update streak if the game is active OR late session is active
@@ -1002,7 +1008,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 c = conn.cursor()
                 # Reset score_live for all users when a new live starts
                 c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL, is_late = 0, submitted_at = 0')
-                game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300}
+                game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300, "session_number": 0}
                 c.execute('INSERT INTO lives DEFAULT VALUES')
                 c.execute('SELECT MAX(id) FROM lives')
                 max_live = c.fetchone()[0]

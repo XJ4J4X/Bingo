@@ -207,11 +207,13 @@
                 }
 
                 if (data.late_session && data.late_session.is_active) {
-                    lateTimer.textContent = formatTime(data.late_session.time_left);
-                    btnLate.textContent = "⏰ EN COURS (" + formatTime(data.late_session.time_left) + ")";
+                    const num = data.late_session.session_number || 1;
+                    lateTimer.textContent = `${formatTime(data.late_session.time_left)} (#${num})`;
+                    btnLate.innerHTML = `<span>⏰ RELANCER #${num} (${formatTime(data.late_session.time_left)})</span>`;
                 } else {
+                    const nextNum = (data.late_session && data.late_session.session_number) ? (data.late_session.session_number + 1) : 1;
                     lateTimer.textContent = "INACTIF";
-                    btnLate.innerHTML = "<span>⏰ LANCER RETARDATAIRES (5 MIN)</span>";
+                    btnLate.innerHTML = `<span>⏰ LANCER RETARDATAIRES #${nextNum} (5 MIN)</span>`;
                 }
             } catch (e) {
                 console.error("Erreur sync OBS", e);

@@ -205,12 +205,16 @@ async function syncGameState() {
         }
 
         if (data.late_session && data.late_session.is_active) {
-            if (adminLateTimerDisplay) adminLateTimerDisplay.style.display = 'block';
-            if (adminLateTime) adminLateTime.textContent = formatTime(data.late_session.time_left);
-            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = '⏰ Retardataires (' + formatTime(data.late_session.time_left) + ')';
+            const num = data.late_session.session_number || 1;
+            if (adminLateTimerDisplay) {
+                adminLateTimerDisplay.style.display = 'block';
+                adminLateTimerDisplay.innerHTML = `⏰ Session Retardataires #${num} en cours : <span id="admin-late-time">${formatTime(data.late_session.time_left)}</span>`;
+            }
+            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = `⏰ Retardataires #${num} (${formatTime(data.late_session.time_left)})`;
         } else {
+            const nextNum = (data.late_session && data.late_session.session_number) ? (data.late_session.session_number + 1) : 1;
             if (adminLateTimerDisplay) adminLateTimerDisplay.style.display = 'none';
-            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = '⏰ Lancer Retardataires (5 min)';
+            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = `⏰ Lancer Retardataires #${nextNum} (5 min)`;
         }
     } catch (err) {
         console.error("Erreur sync timer", err);
@@ -335,12 +339,15 @@ if(stopGameBtn) stopGameBtn.addEventListener('click', async () => {
 const adminTriggerLateBtnEl = document.getElementById('admin-trigger-late-btn');
 if (adminTriggerLateBtnEl) {
     adminTriggerLateBtnEl.addEventListener('click', async () => {
-        if (!confirm("Lancer la session retardataires de 5 minutes ? (Elle tourne en parallèle sans couper le live)")) return;
+        const isRunning = adminTriggerLateBtnEl.textContent.includes('(');
+        const confirmMsg = isRunning 
+            ? "Une session retardataires est déjà en cours. Voulez-vous relancer une nouvelle session de 5 minutes ?"
+            : "Lancer une session retardataires de 5 minutes ? (Elle tourne en parallèle sans couper le live)";
+        if (!confirm(confirmMsg)) return;
         try {
             const res = await fetchWithAuth('/api/action/trigger_late', { method: 'POST' });
             const data = await res.json();
             if (res.ok && data.success) {
-                alert("Session retardataires de 5 minutes lancée !");
                 syncGameState();
             } else {
                 alert(data.error || "Erreur lors du lancement");
