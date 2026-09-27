@@ -6,6 +6,7 @@ import sqlite3
 import random
 import os
 import urllib.parse
+import threading
 
 
 try:
@@ -246,6 +247,111 @@ def get_eff_streak_checker(c):
 
     return eff_streak
 
+_game_lock = threading.Lock()
+
+def finalize_game_and_award_points():
+    global game_state, _leaderboard_cache, _users_all_cache
+    with _game_lock:
+        if not game_state.get("is_active"):
+            return False
+
+        is_test_mode = bool(game_state.get("is_test", False))
+        admin_ticked = list(game_state.get("admin_ticked", []))
+
+        # Mark live as ended immediately
+        game_state["is_active"] = False
+        game_state["is_locked"] = False
+        game_state["is_test"] = False
+        game_state["start_time"] = None
+        game_state["lock_start_time"] = None
+        game_state["late_session"]["is_active"] = False
+        game_state["late_session"]["start_time"] = None
+        game_state["submissions_count"] = 0
+
+        conn = get_db_connection()
+        c = conn.cursor()
+
+        if is_test_mode:
+            c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0, score_live = 0')
+            conn.commit()
+            conn.close()
+            _leaderboard_cache["data"] = None
+            _users_all_cache["data"] = None
+            return True
+
+        # 1. Update phrase stats
+        try:
+            for phrase_said in admin_ticked:
+                c.execute('SELECT count FROM phrase_stats WHERE phrase = ?', (phrase_said,))
+                r = c.fetchone()
+                if r:
+                    c.execute('UPDATE phrase_stats SET count = count + 1 WHERE phrase = ?', (phrase_said,))
+                else:
+                    c.execute('INSERT INTO phrase_stats (phrase, count) VALUES (?, 1)', (phrase_said,))
+        except Exception:
+            pass
+
+        # 2. Evaluate scores for players who submitted
+        c.execute('SELECT id, score, submitted_grid, is_late FROM users WHERE submitted_grid IS NOT NULL')
+        for row in c.fetchall():
+            user_id, current_score, submitted_grid_json, is_late_val = row
+            score_multiplier = 5 if is_late_val else 10
+            try:
+                checked_phrases = json.loads(submitted_grid_json)
+                score_to_add = 0
+                boxes_correct = 0
+                for phrase in checked_phrases:
+                    if phrase in admin_ticked:
+                        score_to_add += score_multiplier
+                        boxes_correct += 1
+                new_score = current_score + score_to_add
+                c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, is_late = 0, boxes_correct = boxes_correct + ? WHERE id = ?', 
+                          (new_score, score_to_add, boxes_correct, user_id))
+            except Exception:
+                c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0 WHERE id = ?', (user_id,))
+
+        # 3. Award a win to the player(s) with the highest score_live (> 0)
+        c.execute('SELECT MAX(score_live) FROM users')
+        max_score = c.fetchone()
+        if max_score and max_score[0] and max_score[0] > 0:
+            c.execute('UPDATE users SET wins = wins + 1 WHERE score_live = ?', (max_score[0],))
+
+        conn.commit()
+        conn.close()
+
+        _leaderboard_cache["data"] = None
+        _users_all_cache["data"] = None
+        return True
+
+def check_game_expiration():
+    if not game_state.get("is_active"):
+        return
+    if game_state.get("is_locked"):
+        if game_state.get("lock_start_time"):
+            elapsed = time.time() - game_state["lock_start_time"]
+            if elapsed >= game_state.get("lock_duration", 0):
+                finalize_game_and_award_points()
+    else:
+        if game_state.get("start_time"):
+            elapsed = time.time() - game_state["start_time"]
+            if elapsed >= game_state.get("duration", 600):
+                if game_state.get("lock_duration", 0) > 0:
+                    game_state["is_locked"] = True
+                    game_state["lock_start_time"] = time.time()
+                else:
+                    finalize_game_and_award_points()
+
+def _timer_worker():
+    while True:
+        try:
+            check_game_expiration()
+        except Exception:
+            pass
+        time.sleep(1)
+
+_timer_thread = threading.Thread(target=_timer_worker, daemon=True)
+_timer_thread.start()
+
 class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory="public", **kwargs)
@@ -452,14 +558,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT score FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT score, score_live FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             res = c.fetchone()
             conn.close()
             if res:
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'score': res[0]}).encode('utf-8'))
+                self.wfile.write(json.dumps({'score': res[0] or 0, 'score_live': res[1] or 0}).encode('utf-8'))
             else:
                 self.send_error(401)
         
@@ -480,14 +586,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                             game_state["lock_start_time"] = time.time()
                             time_left = game_state["lock_duration"]
                         else:
-                            game_state["is_active"] = False
+                            finalize_game_and_award_points()
                 else:
-                    # Phase de verrouillage
+                    # Phase de verrouillage (vérification)
                     elapsed = time.time() - game_state["lock_start_time"] if game_state["lock_start_time"] else 0
                     time_left = max(0, int(game_state["lock_duration"] - elapsed))
                     if time_left == 0:
-                        game_state["is_active"] = False
-                        game_state["is_locked"] = False
+                        # Le compteur de vérification arrive à zéro : validation des choix et attribution des points !
+                        finalize_game_and_award_points()
 
             # Calcul du chrono retardataires séparé
             late_time_left = 0
@@ -1152,81 +1258,11 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             elif url_path == '/api/admin/game/stop':
                 is_test_mode = bool(game_state.get("is_test", False))
-                game_state["is_active"] = False
-                game_state["is_locked"] = False
-                game_state["is_test"] = False
-                game_state["start_time"] = None
-                game_state["lock_start_time"] = None
-                game_state["late_session"]["is_active"] = False
-                game_state["late_session"]["start_time"] = None
-                game_state["submissions_count"] = 0
-                
-                conn = get_db_connection()
-                c = conn.cursor()
-
-                if is_test_mode:
-                    # En mode test : nettoyage sans toucher aux scores, victoires, participations ni stats de phrases
-                    c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0, score_live = 0')
-                    conn.commit()
-                    conn.close()
-                    _leaderboard_cache["data"] = None
-                    _users_all_cache["data"] = None
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({'success': True, 'is_test': True}).encode('utf-8'))
-                    return
-                
-                # Evaluate scores for players who submitted
-                conn = get_db_connection()
-                c = conn.cursor()
-                
-                # Update phrase stats
-                try:
-                    for phrase_said in game_state["admin_ticked"]:
-                        c.execute('SELECT count FROM phrase_stats WHERE phrase = ?', (phrase_said,))
-                        r = c.fetchone()
-                        if r:
-                            c.execute('UPDATE phrase_stats SET count = count + 1 WHERE phrase = ?', (phrase_said,))
-                        else:
-                            c.execute('INSERT INTO phrase_stats (phrase, count) VALUES (?, 1)', (phrase_said,))
-                except Exception as e:
-                    pass
-
-                c.execute('SELECT id, score, submitted_grid, is_late FROM users WHERE submitted_grid IS NOT NULL')
-                for row in c.fetchall():
-                    user_id, current_score, submitted_grid_json, is_late_val = row
-                    score_multiplier = 5 if is_late_val else 10
-                    try:
-                        checked_phrases = json.loads(submitted_grid_json)
-                        score_to_add = 0
-                        boxes_correct = 0
-                        for phrase in checked_phrases:
-                            if phrase in game_state["admin_ticked"]:
-                                score_to_add += score_multiplier
-                                boxes_correct += 1
-                        new_score = current_score + score_to_add
-                        c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, is_late = 0, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_correct, user_id))
-                    except:
-                        c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0 WHERE id = ?', (user_id,))
-                
-                # Award a win to the player(s) with the highest score_live
-                c.execute('SELECT MAX(score_live) FROM users')
-                max_score = c.fetchone()
-                if max_score and max_score[0] and max_score[0] > 0:
-                    c.execute('UPDATE users SET wins = wins + 1 WHERE score_live = ?', (max_score[0],))
-                
-                conn.commit()
-                conn.close()
-
-                game_state["submissions_count"] = 0
-                _leaderboard_cache["data"] = None
-                _users_all_cache["data"] = None
-
+                finalize_game_and_award_points()
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                self.wfile.write(json.dumps({'success': True, 'is_test': is_test_mode}).encode('utf-8'))
                 
             elif url_path == '/api/admin/stats':
                 conn = get_db_connection()

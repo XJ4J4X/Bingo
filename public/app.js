@@ -449,22 +449,31 @@ async function syncState() {
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        gameMessage.style.color = "green";
-                        gameMessage.textContent = `Grille validée ! Vous avez maintenant ${data.score} points.`;
-                        
-                        try {
-                            const audio = new Audio('ting.mp3');
-                            audio.play();
-                        } catch (e) { }
-                        
-                        if (typeof confetti === 'function') {
-                            confetti({
-                                particleCount: 100,
-                                spread: 70,
-                                origin: { y: 0.6 },
-                                colors: ['#00ff00', '#ffffff', '#ff0000']
-                            });
+                        if (window.isTestLive) {
+                            gameMessage.style.color = "#8e44ad";
+                            gameMessage.textContent = `🧪 Mode Test terminé ! Vos stats réelles sont restées intactes (Score : ${data.score} pts).`;
+                        } else if (data.score_live > 0) {
+                            gameMessage.style.color = "green";
+                            gameMessage.innerHTML = `🎉 <strong>Grille validée !</strong> Vous avez gagné <strong>+${data.score_live} points</strong> lors de ce Live (Total : ${data.score} pts).`;
+                            
+                            try {
+                                const audio = new Audio('ting.mp3');
+                                audio.play();
+                            } catch (e) { }
+                            
+                            if (typeof confetti === 'function') {
+                                confetti({
+                                    particleCount: 100,
+                                    spread: 70,
+                                    origin: { y: 0.6 },
+                                    colors: ['#00ff00', '#ffffff', '#ff0000']
+                                });
+                            }
+                        } else {
+                            gameMessage.style.color = "#7f8c8d";
+                            gameMessage.textContent = `Live terminé. Aucune de vos phrases cochées n'a été validée (Total : ${data.score} pts).`;
                         }
+                        loadLeaderboard();
                     }
                 } catch(e) { console.error(e); }
             }
