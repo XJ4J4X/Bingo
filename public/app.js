@@ -476,10 +476,31 @@ async function syncState() {
             }
         }
         
+        const now = Date.now();
+        const gameStateChanged = (window.wasGameActive !== isGameActive);
         window.wasGameActive = isGameActive;
-        loadLeaderboard();
-        loadUserStats();
-        loadLiveSubmissions();
+
+        // Leaderboard : actualisé toutes les 30s ou au changement d'état du live
+        if (gameStateChanged || !window.lastLeaderboardFetch || (now - window.lastLeaderboardFetch > 30000)) {
+            window.lastLeaderboardFetch = now;
+            loadLeaderboard();
+        }
+
+        // Stats joueur : uniquement au démarrage, changement d'état du live ou onglet Stats
+        if (gameStateChanged || !window.lastUserStatsFetch) {
+            window.lastUserStatsFetch = now;
+            loadUserStats();
+        }
+
+        // Grilles soumises : uniquement pendant un live actif (toutes les 4s)
+        if (isGameActive) {
+            if (!window.lastSubmissionsFetch || (now - window.lastSubmissionsFetch > 4000)) {
+                window.lastSubmissionsFetch = now;
+                loadLiveSubmissions();
+            }
+        } else if (liveSubmissionsContainer && !liveSubmissionsContainer.classList.contains('hidden')) {
+            liveSubmissionsContainer.classList.add('hidden');
+        }
         
         // Show color picker if user is the winner
         if (currentUser && data.color_choice_user_pseudo === currentUser) {

@@ -69,13 +69,16 @@ game_state = {
     "admin_ticked": [],
     "color_choice_user_pseudo": None,
     "rules_enabled": False,
+    "submissions_count": 0,
     "late_session": {
         "is_active": False,
         "start_time": None,
-        "duration": 300,
-        "session_number": 0
+        "duration": 300
     }
 }
+
+_leaderboard_cache = {"data": None, "timestamp": 0}
+_users_all_cache = {"data": None, "timestamp": 0}
 
 def init_db():
     global game_state
@@ -284,6 +287,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
+            now = time.time()
+            if _users_all_cache["data"] and (now - _users_all_cache["timestamp"] < 20):
+                self.wfile.write(_users_all_cache["data"])
+                return
             conn = get_db_connection()
             c = conn.cursor()
             eff_streak = get_eff_streak_checker(c)
@@ -298,14 +305,21 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'font_family': row[6] or ''
             } for row in c.fetchall()]
             conn.close()
-            self.wfile.write(json.dumps(all_users).encode('utf-8'))
+            resp = json.dumps(all_users).encode('utf-8')
+            _users_all_cache["data"] = resp
+            _users_all_cache["timestamp"] = now
+            self.wfile.write(resp)
             return
             
         if url_path == '/api/leaderboard':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            
+            now = time.time()
+            if _leaderboard_cache["data"] and (now - _leaderboard_cache["timestamp"] < 15):
+                self.wfile.write(_leaderboard_cache["data"])
+                return
+
             conn = get_db_connection()
             c = conn.cursor()
             eff_streak = get_eff_streak_checker(c)
@@ -322,8 +336,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             top_streaks = [{'pseudo': row[0], 'max_streak': row[1], 'color': row[2], 'streak': eff_streak(row[3], row[5]), 'font_family': row[4]} for row in c.fetchall()]
             
             conn.close()
-            
-            self.wfile.write(json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live, "top_streaks": top_streaks}).encode('utf-8'))
+            resp = json.dumps({"top_score": top_score, "top_wins": top_wins, "top_live": top_live, "top_streaks": top_streaks}).encode('utf-8')
+            _leaderboard_cache["data"] = resp
+            _leaderboard_cache["timestamp"] = now
+            self.wfile.write(resp)
             
         elif url_path == '/api/user_stats':
             pseudo = urllib.parse.unquote(self.headers.get('pseudo', '').strip())
@@ -460,17 +476,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     game_state["late_session"]["is_active"] = False
 
-            # Nombre de grilles soumises
-            sub_count = 0
-            if game_state.get("is_active"):
-                try:
-                    conn = get_db_connection()
-                    c = conn.cursor()
-                    c.execute('SELECT COUNT(*) FROM users WHERE submitted_grid IS NOT NULL')
-                    sub_count = c.fetchone()[0] or 0
-                    conn.close()
-                except Exception:
-                    pass
+            # Nombre de grilles soumises (géré en mémoire sans interroger la BDD)
+            sub_count = game_state.get("submissions_count", 0)
 
             self.wfile.write(json.dumps({
                 "is_active": game_state["is_active"],
@@ -778,6 +785,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     password = "-".join(random.sample(WORDS, 3))
                     c.execute('INSERT INTO users (pseudo, password_words) VALUES (?, ?)', (pseudo, password))
                     conn.commit()
+                    _users_all_cache["data"] = None
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -925,6 +933,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                               (json.dumps(checked_phrases), 1 if is_late_sub else 0, now_t, boxes_checked, user[0]))
                     conn.commit()
                     conn.close()
+                    game_state["submissions_count"] = game_state.get("submissions_count", 0) + 1
+                    _leaderboard_cache["data"] = None
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
@@ -950,6 +960,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 c.execute('UPDATE users SET score = ?, score_live = score_live + ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ?, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_checked, boxes_correct, user[0]))
                 conn.commit()
                 conn.close()
+                _leaderboard_cache["data"] = None
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -1047,7 +1058,9 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 c = conn.cursor()
                 # Reset score_live for all users when a new live starts
                 c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL, is_late = 0, submitted_at = 0')
+                game_state["submissions_count"] = 0
                 game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300}
+                _leaderboard_cache["data"] = None
                 c.execute('INSERT INTO lives DEFAULT VALUES')
                 c.execute('SELECT MAX(id) FROM lives')
                 max_live = c.fetchone()[0]
@@ -1125,6 +1138,10 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 
                 conn.commit()
                 conn.close()
+
+                game_state["submissions_count"] = 0
+                _leaderboard_cache["data"] = None
+                _users_all_cache["data"] = None
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')

@@ -189,7 +189,11 @@ async function syncGameState() {
             const lcs = document.getElementById('live-control-section'); 
             if(lcs) { lcs.style.display = 'block'; lcs.classList.remove('hidden'); }
             loadLiveData();
-            loadSubmissionsData();
+            const now = Date.now();
+            if (!window.lastAdminSubmissionsFetch || (now - window.lastAdminSubmissionsFetch > 3000)) {
+                window.lastAdminSubmissionsFetch = now;
+                loadSubmissionsData();
+            }
         } else {
             if (startGameBtn) startGameBtn.classList.remove('hidden');
             if (stopGameBtn) stopGameBtn.classList.add('hidden');
