@@ -931,3 +931,143 @@ body.dark-mode .leaderboard-tabs button {
 body.dark-mode .leaderboard-tabs button:hover:not(.active) {
     background: #3a3a3d;
 }
+
+/* ---- TABLEAU A LA CRAIE (HALL OF FAME) ---- */
+.chalkboard-frame {
+    background: url('tableau_craie.jpg') no-repeat center center;
+    background-size: 100% 100%;
+    border-radius: 8px;
+    padding: 55px 45px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.8);
+    position: relative;
+    margin: 15px auto 40px auto;
+    max-width: 950px;
+    min-height: 520px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .chalkboard-frame {
+        padding: 40px 20px;
+        min-height: 420px;
+        background-size: cover;
+    }
+}
+
+.chalkboard-inner {
+    width: 100%;
+    text-align: center;
+    color: #f7f9fa;
+    font-family: 'Caveat', 'Patrick Hand', cursive, sans-serif;
+}
+
+.chalk-title {
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 0 3px rgba(255, 255, 255, 0.9), 0 0 10px rgba(255, 255, 255, 0.4);
+    margin-top: 0;
+    margin-bottom: 6px;
+    display: inline-block;
+    border-bottom: 2px dashed rgba(255, 255, 255, 0.45);
+    padding-bottom: 6px;
+}
+
+.chalk-subtitle {
+    font-size: 1.35rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin-top: 4px;
+    margin-bottom: 25px;
+    font-style: italic;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.chalk-players-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 10px 15px;
+}
+
+.chalk-player-badge {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    padding: 6px 14px;
+    font-size: 1.4rem;
+    color: #ffffff;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 255, 255, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(2px);
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.chalk-player-badge:hover {
+    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.7);
+}
+
+.chalk-player-badge .chalk-stat {
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 7px;
+    border-radius: 10px;
+    color: #ffeaa7;
+    text-shadow: none;
+    font-family: sans-serif;
+    font-weight: bold;
+}
+
+/* ---- LIVE SUBMISSIONS LIST ---- */
+.live-submissions-box {
+    margin-top: 25px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+body.dark-mode .live-submissions-box {
+    background: #1f1f23;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.submission-chip {
+    background: var(--bg-secondary, #f8f9fa);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    animation: popIn 0.3s ease-out;
+}
+
+body.dark-mode .submission-chip {
+    background: #2a2a2e;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #efeff1;
+}
+
+.submission-chip.is-you {
+    border-color: #2ecc71;
+    background: rgba(46, 204, 113, 0.12);
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}

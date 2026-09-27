@@ -78,6 +78,12 @@ const timerDisplay = document.getElementById('timer');
 const validateGridBtn = document.getElementById('validate-grid-btn');
 const gameMessage = document.getElementById('game-message');
 
+const lateSessionBanner = document.getElementById('late-session-banner');
+const lateTimer = document.getElementById('late-timer');
+const liveSubmissionsContainer = document.getElementById('live-submissions-container');
+const playerSubmissionsList = document.getElementById('player-submissions-list');
+const playerSubmissionsCount = document.getElementById('player-submissions-count');
+
 const leaderboardBody = document.getElementById('leaderboard-body');
 const colorPickerSection = document.getElementById('color-picker-section');
 const userColorPicker = document.getElementById('user-color-picker');
@@ -363,18 +369,42 @@ async function syncState() {
             generateGrid();
             window.gridGenerated = true;
         }
+
+        const isLateActive = !!(data.late_session && data.late_session.is_active);
+        if (isLateActive) {
+            if (lateSessionBanner) {
+                lateSessionBanner.classList.remove('hidden');
+                if (lateTimer) {
+                    lateTimer.textContent = formatTime(data.late_session.time_left || 0);
+                }
+            }
+        } else {
+            if (lateSessionBanner) {
+                lateSessionBanner.classList.add('hidden');
+            }
+        }
         
         if (isGameActive) {
             timerDisplay.textContent = formatTime(timeLeft);
             
             if (data.is_locked) {
-                gridLocked = true;
-                document.getElementById('bingo-grid').classList.add('locked-grid');
-                if(!hasSubmittedScore) {
-                    validateGridBtn.disabled = true;
-                    gameMessage.textContent = "VÉRIFICATION EN COURS...";
-                    gameMessage.style.color = "orange";
+                // Si la session retardataire est en cours ET que le joueur n'a pas encore validé, il peut jouer !
+                if (isLateActive && !hasSubmittedScore) {
+                    gridLocked = false;
+                    document.getElementById('bingo-grid').classList.remove('locked-grid');
+                    validateGridBtn.disabled = false;
+                    gameMessage.textContent = "⏰ Session Retardataires active ! Cochez max 5 cases et validez (5 pts/case).";
+                    gameMessage.style.color = "#e67e22";
                     gameMessage.style.fontWeight = "bold";
+                } else {
+                    gridLocked = true;
+                    document.getElementById('bingo-grid').classList.add('locked-grid');
+                    if(!hasSubmittedScore) {
+                        validateGridBtn.disabled = true;
+                        gameMessage.textContent = "VÉRIFICATION EN COURS...";
+                        gameMessage.style.color = "orange";
+                        gameMessage.style.fontWeight = "bold";
+                    }
                 }
             } else {
                 gridLocked = false;
@@ -438,6 +468,7 @@ async function syncState() {
         window.wasGameActive = isGameActive;
         loadLeaderboard();
         loadUserStats();
+        loadLiveSubmissions();
         
         // Show color picker if user is the winner
         if (currentUser && data.color_choice_user_pseudo === currentUser) {
@@ -448,6 +479,56 @@ async function syncState() {
         
     } catch (err) {
         console.error("Erreur sync game state", err);
+    }
+}
+
+async function loadLiveSubmissions() {
+    if (!liveSubmissionsContainer || !playerSubmissionsList) return;
+    try {
+        const res = await fetch('/api/game/submissions?t=' + Date.now());
+        if (!res.ok) return;
+        const subs = await res.json();
+        
+        if (!subs || subs.length === 0) {
+            if (isGameActive) {
+                liveSubmissionsContainer.classList.remove('hidden');
+                playerSubmissionsList.innerHTML = '<span style="color: var(--text-color, #7f8c8d); font-size: 0.9rem; font-style: italic;">Aucune grille validée pour le moment.</span>';
+                if (playerSubmissionsCount) playerSubmissionsCount.textContent = '0';
+            } else {
+                liveSubmissionsContainer.classList.add('hidden');
+            }
+            return;
+        }
+        
+        liveSubmissionsContainer.classList.remove('hidden');
+        if (playerSubmissionsCount) playerSubmissionsCount.textContent = subs.length;
+        
+        playerSubmissionsList.innerHTML = '';
+        subs.forEach(s => {
+            const chip = document.createElement('span');
+            chip.className = 'submission-chip';
+            const isMe = currentUser && s.pseudo && (s.pseudo.toLowerCase() === currentUser.toLowerCase());
+            if (isMe) {
+                chip.classList.add('is-you');
+            }
+            
+            let extra = '';
+            if (s.is_late) {
+                extra = ' <span title="Retardataire (0.5x)">⏰</span>';
+            }
+            
+            let flame = '';
+            const streak = s.streak || s.current_streak || 0;
+            if (streak > 1) {
+                flame = ` <span title="Série : ${streak}">🔥${streak}</span>`;
+            }
+            
+            let meBadge = isMe ? ' <strong style="color: #27ae60;">(Toi ✓)</strong>' : '';
+            chip.innerHTML = `${s.pseudo}${flame}${extra}${meBadge}`;
+            playerSubmissionsList.appendChild(chip);
+        });
+    } catch (e) {
+        console.error("Erreur chargement soumissions en direct", e);
     }
 }
 
@@ -474,7 +555,10 @@ validateGridBtn.addEventListener('click', async () => {
         const data = await res.json();
         if (res.ok) {
             hasSubmittedScore = true;
-            if (data.pending) {
+            if (data.is_late) {
+                gameMessage.style.color = "#e67e22";
+                gameMessage.textContent = "Grille enregistrée en session Retardataire (5 pts par case validée) ! En attente de la vérification finale...";
+            } else if (data.pending) {
                 gameMessage.style.color = "orange";
                 gameMessage.textContent = "Grille envoyée ! En attente de la validation de l'administrateur à la fin du live...";
             } else {
@@ -497,9 +581,10 @@ validateGridBtn.addEventListener('click', async () => {
                     });
                 }
             }
+            loadLiveSubmissions();
         } else {
             gameMessage.style.color = "red";
-            gameMessage.textContent = "Erreur lors de la validation.";
+            gameMessage.textContent = data.error || "Erreur lors de la validation.";
             validateGridBtn.disabled = false;
             gridLocked = false;
         }
@@ -841,35 +926,44 @@ async function loadAllPlayers() {
         container.innerHTML = '';
         
         if(users.length === 0) {
-            container.innerHTML = '<p>Aucun compte créé pour le moment.</p>';
+            container.innerHTML = '<p style="color: #ffffff; text-shadow: 0 0 4px #fff; font-size: 1.3rem;">Aucun élève inscrit sur le tableau pour le moment.</p>';
             return;
         }
         
         users.forEach(u => {
-            const div = document.createElement('div');
-            div.style = "background: var(--bg-secondary); padding: 10px 15px; border-radius: 20px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1);";
+            const badge = document.createElement('div');
+            badge.className = 'chalk-player-badge';
             
             let pseudoDisplay = u.pseudo;
-            if (u.streak && u.streak > 1) {
-                let level = 0;
-                if (u.streak >= 3 && u.streak <= 4) level = 1;
-                else if (u.streak >= 5 && u.streak <= 9) level = 2;
-                else if (u.streak >= 10) level = 3;
-                pseudoDisplay += ` <span class="streak-flame streak-level-${level}" title="Série : ${u.streak}">🔥${u.streak}</span>`;
-            }
-            if (u.pseudo.toLowerCase() === 'aminat0_') {
-                div.classList.add('aminato-effect');
-            }
-            if (u.color) {
-                div.style.color = u.color;
-                div.style.textShadow = "1px 1px 2px rgba(0,0,0,0.3)";
+            let pseudoClass = u.font_family ? (' ' + u.font_family) : '';
+            if (u.pseudo && u.pseudo.toLowerCase() === 'aminat0_') {
+                badge.classList.add('aminato-effect');
             }
             
-            div.innerHTML = pseudoDisplay;
-            container.appendChild(div);
+            let colorStyle = u.color ? `color: ${u.color};` : '';
+            
+            let streakIcon = '';
+            const streak = u.current_streak || u.streak || 0;
+            if (streak > 1) {
+                streakIcon = ` <span title="Série : ${streak}">🔥${streak}</span>`;
+            }
+            
+            let winsBadge = '';
+            if (u.wins && u.wins > 0) {
+                winsBadge = `<span class="chalk-stat" title="${u.wins} victoires">👑 ${u.wins}</span>`;
+            }
+            
+            let scoreBadge = `<span class="chalk-stat">${u.score || 0} pts</span>`;
+            
+            badge.innerHTML = `
+                <span class="${pseudoClass}" style="${colorStyle}">${pseudoDisplay}${streakIcon}</span>
+                ${winsBadge}
+                ${scoreBadge}
+            `;
+            container.appendChild(badge);
         });
     } catch (err) {
-        console.error(err);
+        console.error("Erreur chargement Hall of Fame", err);
     }
 }
 

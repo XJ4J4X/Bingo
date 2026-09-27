@@ -164,32 +164,89 @@ async function syncGameState() {
                 toggleRulesBtn.classList.add('warning-btn');
             }
         }
+
+        const adminTriggerLateBtn = document.getElementById('admin-trigger-late-btn');
+        const adminLateTimerDisplay = document.getElementById('admin-late-timer-display');
+        const adminLateTime = document.getElementById('admin-late-time');
         
         if (data.is_active) {
+            if (startGameBtn) startGameBtn.classList.add('hidden');
+            if (stopGameBtn) stopGameBtn.classList.remove('hidden');
+            if (adminTriggerLateBtn) adminTriggerLateBtn.classList.remove('hidden');
+
             if (data.is_locked) {
                 gameStatus.textContent = "Verrouillé (Vérification)";
                 gameStatus.style.color = "orange";
                 document.getElementById('stop-game-btn').textContent = "Terminer & Valider les Scores";
-                document.getElementById('stop-game-btn').className = "success-btn";
+                document.getElementById('stop-game-btn').className = "btn success-btn";
             } else {
                 gameStatus.textContent = "En cours (Jeu)";
                 gameStatus.style.color = "green";
                 document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
-                document.getElementById('stop-game-btn').className = "danger-btn";
+                document.getElementById('stop-game-btn').className = "btn danger-btn";
             }
             timerDisplay.textContent = formatTime(data.time_left);
-            const lcs = document.getElementById('live-control-section'); if(lcs) { lcs.style.display = 'block'; lcs.classList.remove('hidden'); }
+            const lcs = document.getElementById('live-control-section'); 
+            if(lcs) { lcs.style.display = 'block'; lcs.classList.remove('hidden'); }
             loadLiveData();
+            loadSubmissionsData();
         } else {
+            if (startGameBtn) startGameBtn.classList.remove('hidden');
+            if (stopGameBtn) stopGameBtn.classList.add('hidden');
+            if (adminTriggerLateBtn) adminTriggerLateBtn.classList.add('hidden');
+
             gameStatus.textContent = "Hors ligne";
             gameStatus.style.color = "red";
             timerDisplay.textContent = "00:00";
-            const lcs2 = document.getElementById('live-control-section'); if(lcs2) { lcs2.style.display = 'none'; lcs2.classList.add('hidden'); }
+            const lcs2 = document.getElementById('live-control-section'); 
+            if(lcs2) { lcs2.style.display = 'none'; lcs2.classList.add('hidden'); }
             document.getElementById('stop-game-btn').textContent = "Arrêter le Live";
-            document.getElementById('stop-game-btn').className = "danger-btn";
+            document.getElementById('stop-game-btn').className = "btn danger-btn";
+        }
+
+        if (data.late_session && data.late_session.is_active) {
+            if (adminLateTimerDisplay) adminLateTimerDisplay.style.display = 'block';
+            if (adminLateTime) adminLateTime.textContent = formatTime(data.late_session.time_left);
+            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = '⏰ Retardataires (' + formatTime(data.late_session.time_left) + ')';
+        } else {
+            if (adminLateTimerDisplay) adminLateTimerDisplay.style.display = 'none';
+            if (adminTriggerLateBtn) adminTriggerLateBtn.textContent = '⏰ Lancer Retardataires (5 min)';
         }
     } catch (err) {
         console.error("Erreur sync timer", err);
+    }
+}
+
+async function loadSubmissionsData() {
+    try {
+        const res = await fetch('/api/game/submissions?t=' + Date.now());
+        if (!res.ok) return;
+        const list = await res.json();
+        
+        const countSpan = document.getElementById('admin-submissions-count');
+        const container = document.getElementById('admin-submissions-list');
+        if (countSpan) countSpan.textContent = list.length;
+        if (!container) return;
+        
+        if (list.length === 0) {
+            container.innerHTML = '<span style="color: #95a5a6; font-size: 0.9em;">En attente de validations...</span>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        list.forEach(sub => {
+            const chip = document.createElement('div');
+            chip.style = "background: white; border: 1px solid #dee2e6; border-radius: 20px; padding: 6px 14px; font-size: 0.9rem; font-weight: bold; display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);";
+            
+            let colorDot = sub.color ? `<span style="width: 10px; height: 10px; border-radius: 50%; background: ${sub.color}; display: inline-block;"></span>` : '';
+            let lateTag = sub.is_late ? `<span style="background: #e67e22; color: white; border-radius: 10px; font-size: 0.7rem; padding: 2px 6px;">⏰ Retardataire</span>` : '';
+            let countTag = `<span style="background: #ecf0f1; color: #2c3e50; border-radius: 10px; font-size: 0.75rem; padding: 2px 6px;">${sub.count}/5</span>`;
+            
+            chip.innerHTML = `${colorDot}<span>${sub.pseudo}</span> ${countTag} ${lateTag}`;
+            container.appendChild(chip);
+        });
+    } catch (err) {
+        console.error("Erreur submissions", err);
     }
 }
 
@@ -274,6 +331,25 @@ if(stopGameBtn) stopGameBtn.addEventListener('click', async () => {
     await fetchWithAuth('/api/admin/game/stop', { method: 'POST' });
     syncGameState();
 });
+
+const adminTriggerLateBtnEl = document.getElementById('admin-trigger-late-btn');
+if (adminTriggerLateBtnEl) {
+    adminTriggerLateBtnEl.addEventListener('click', async () => {
+        if (!confirm("Lancer la session retardataires de 5 minutes ? (Elle tourne en parallèle sans couper le live)")) return;
+        try {
+            const res = await fetchWithAuth('/api/action/trigger_late', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert("Session retardataires de 5 minutes lancée !");
+                syncGameState();
+            } else {
+                alert(data.error || "Erreur lors du lancement");
+            }
+        } catch (e) {
+            alert("Erreur de connexion");
+        }
+    });
+}
 
 async function loadUsers() {
     try {

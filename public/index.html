@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Le Bingo du Manoir</title>
     <link rel="icon" type="image/png" href="favicon.png?v=300">
-    <link rel="stylesheet" href="style.css?v=4300">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=5000">
 </head>
 <body class="player-page">
     <header>
@@ -56,11 +59,15 @@
         <nav id="main-nav" class="hidden" style="margin-bottom: 20px; display: flex; gap: 10px;">
             <button id="nav-game-btn" class="nav-btn active" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: #3498db; color: white;">Jeu</button>
             <button id="nav-stats-btn" class="nav-btn" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color);">Statistiques</button>
-            <button id="nav-players-btn" class="nav-btn" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color);">Joueurs Inscrits</button>
+            <button id="nav-players-btn" class="nav-btn" style="flex: 1; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; background: rgba(255,255,255,0.1); color: var(--text-color);">🏛️ Hall of Fame</button>
         </nav>
 
         <section id="game-section" class="hidden">
             
+            <div id="late-session-banner" class="hidden" style="background: linear-gradient(135deg, #e67e22, #d35400); color: white; padding: 12px 18px; border-radius: 8px; margin-bottom: 15px; text-align: center; font-weight: bold; box-shadow: 0 4px 10px rgba(230,126,34,0.3);">
+                ⏰ Session Retardataires en cours ! Temps restant : <span id="late-timer">05:00</span> (5 pts par case validée)
+            </div>
+
             <div class="game-header">
                 <h2>Fin du live dans : <span id="timer">10:00</span></h2>
                 <button id="validate-grid-btn" disabled>Valider ma grille</button>
@@ -70,6 +77,18 @@
             </div>
             
             <div id="game-message"></div>
+
+            <div id="live-submissions-container" class="hidden" style="margin-top: 25px; padding: 16px 20px; border-radius: 12px; background: var(--bg-secondary, #ffffff); border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                        <span>📋 Grilles validées en direct</span>
+                        <span id="player-submissions-count" style="background: #3498db; color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.85rem;">0</span>
+                    </h3>
+                </div>
+                <div id="player-submissions-list" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 180px; overflow-y: auto;">
+                    <!-- Les joueurs ayant validé seront injectés ici -->
+                </div>
+            </div>
         </section>
 
         <section id="stats-section" class="hidden">
@@ -114,10 +133,14 @@
         </section>
 
         <section id="players-section" class="hidden">
-            <h2>Joueurs Inscrits</h2>
-            <p style="text-align: center; color: var(--text-muted);">Voici la liste de tous les joueurs inscrits au bingo :</p>
-            <div id="all-players-list" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 20px; margin-bottom: 40px;">
-                <!-- Les joueurs seront injectés ici -->
+            <div class="chalkboard-frame">
+                <div class="chalkboard-inner">
+                    <h2 class="chalk-title">★ HALL OF FAME DU MANOIR ★</h2>
+                    <p class="chalk-subtitle">Tableau d'honneur des joueurs inscrits</p>
+                    <div id="all-players-list" class="chalk-players-grid">
+                        <!-- Les joueurs seront injectés ici -->
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -231,6 +254,6 @@
         Fait avec amour par J4X ❤️ - Version 2.0.0
     </div>
 
-    <script src="app.js?v=4900"></script>
+    <script src="app.js?v=5000"></script>
 </body>
 </html>

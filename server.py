@@ -41,7 +41,7 @@ def get_db_connection():
 DBIntegrityError = psycopg.IntegrityError if IS_POSTGRES and psycopg else sqlite3.IntegrityError
 import time
 
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))
 DB_FILE = 'database.sqlite'
 
 WORDS = ["fantome", "esprit", "spectre", "vampire", "zombie", "manoir", "tombe", "squelette", "monstre", "loup-garou",
@@ -68,7 +68,12 @@ game_state = {
     "active_phrases": [],
     "admin_ticked": [],
     "color_choice_user_pseudo": None,
-    "rules_enabled": False
+    "rules_enabled": False,
+    "late_session": {
+        "is_active": False,
+        "start_time": None,
+        "duration": 300
+    }
 }
 
 def init_db():
@@ -122,6 +127,10 @@ def init_db():
         c.execute("ALTER TABLE users ADD COLUMN font_family TEXT DEFAULT ''")
     if 'last_live_id' not in columns:
         c.execute("ALTER TABLE users ADD COLUMN last_live_id INTEGER DEFAULT 0")
+    if 'is_late' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN is_late INTEGER DEFAULT 0")
+    if 'submitted_at' not in columns:
+        c.execute("ALTER TABLE users ADD COLUMN submitted_at REAL DEFAULT 0")
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS lives (
@@ -237,11 +246,16 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             conn = get_db_connection()
             c = conn.cursor()
-            if IS_POSTGRES:
-                c.execute('SELECT pseudo, color FROM users ORDER BY LOWER(pseudo) ASC')
-            else:
-                c.execute('SELECT pseudo, color FROM users ORDER BY pseudo COLLATE NOCASE ASC')
-            all_users = [{'pseudo': row[0], 'color': row[1]} for row in c.fetchall()]
+            c.execute('SELECT pseudo, color, wins, score, current_streak, max_streak, font_family FROM users ORDER BY wins DESC, score DESC, LOWER(pseudo) ASC')
+            all_users = [{
+                'pseudo': row[0],
+                'color': row[1],
+                'wins': row[2] or 0,
+                'score': row[3] or 0,
+                'streak': row[4] or 0,
+                'max_streak': row[5] or 0,
+                'font_family': row[6] or ''
+            } for row in c.fetchall()]
             conn.close()
             self.wfile.write(json.dumps(all_users).encode('utf-8'))
             return
@@ -395,14 +409,112 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                     if time_left == 0:
                         game_state["is_active"] = False
                         game_state["is_locked"] = False
+
+            # Calcul du chrono retardataires séparé
+            late_time_left = 0
+            late_active = False
+            late_sess = game_state.get("late_session", {})
+            if late_sess.get("is_active"):
+                l_elapsed = time.time() - late_sess["start_time"] if late_sess.get("start_time") else 0
+                late_time_left = max(0, int(late_sess.get("duration", 300) - l_elapsed))
+                if late_time_left > 0:
+                    late_active = True
+                else:
+                    game_state["late_session"]["is_active"] = False
+
+            # Nombre de grilles soumises
+            sub_count = 0
+            if game_state.get("is_active"):
+                try:
+                    conn = get_db_connection()
+                    c = conn.cursor()
+                    c.execute('SELECT COUNT(*) FROM users WHERE submitted_grid IS NOT NULL')
+                    sub_count = c.fetchone()[0] or 0
+                    conn.close()
+                except Exception:
+                    pass
+
             self.wfile.write(json.dumps({
                 "is_active": game_state["is_active"],
                 "is_locked": game_state.get("is_locked", False),
                 "time_left": time_left,
-                "verification_mode": game_state.get("verification_mode", "auto"),
+                "late_session": {
+                    "is_active": late_active,
+                    "time_left": late_time_left
+                },
+                "submissions_count": sub_count,
+                "verification_mode": game_state.get("verification_mode", "strict"),
                 "color_choice_user_pseudo": game_state.get("color_choice_user_pseudo"),
                 "rules_enabled": game_state.get("rules_enabled", False)
             }).encode('utf-8'))
+
+        elif url_path == '/api/game/submissions':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            submissions = []
+            if game_state.get("is_active"):
+                try:
+                    conn = get_db_connection()
+                    c = conn.cursor()
+                    c.execute('SELECT pseudo, color, submitted_grid, is_late, submitted_at FROM users WHERE submitted_grid IS NOT NULL ORDER BY submitted_at ASC, id ASC')
+                    for r in c.fetchall():
+                        try:
+                            count = len(json.loads(r[2])) if r[2] else 0
+                        except:
+                            count = 0
+                        submissions.append({
+                            'pseudo': r[0],
+                            'color': r[1],
+                            'count': count,
+                            'is_late': bool(r[3]),
+                            'submitted_at': r[4] or 0
+                        })
+                    conn.close()
+                except Exception:
+                    pass
+            self.wfile.write(json.dumps(submissions).encode('utf-8'))
+
+        elif url_path == '/api/action/trigger_late':
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            key = params.get('key', [None])[0]
+            
+            admin_auth = False
+            if key:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id FROM admins WHERE password = ?', (key,))
+                if c.fetchone():
+                    admin_auth = True
+                conn.close()
+            elif check_admin(self.headers):
+                admin_auth = True
+                
+            if not admin_auth:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode('utf-8'))
+                return
+                
+            if not game_state.get("is_active"):
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
+                return
+
+            # Démarrage de la session retardataires sans toucher au chrono principal
+            game_state["late_session"] = {
+                "is_active": True,
+                "start_time": time.time(),
+                "duration": 300
+            }
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
 
         elif url_path == '/api/admin/users':
             admin_data = check_admin(self.headers)
@@ -657,6 +769,47 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': 'Invalid credentials'}).encode('utf-8'))
 
+        elif url_path == '/api/action/trigger_late':
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            key = params.get('key', [None])[0] or data.get('key') or data.get('password')
+            
+            admin_auth = False
+            if key:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id FROM admins WHERE password = ?', (key,))
+                if c.fetchone():
+                    admin_auth = True
+                conn.close()
+            elif check_admin(self.headers):
+                admin_auth = True
+                
+            if not admin_auth:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Unauthorized'}).encode('utf-8'))
+                return
+                
+            if not game_state.get("is_active"):
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Aucun live en cours'}).encode('utf-8'))
+                return
+
+            game_state["late_session"] = {
+                "is_active": True,
+                "start_time": time.time(),
+                "duration": 300
+            }
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'success': True, 'duration': 300}).encode('utf-8'))
+            return
+
         elif url_path == '/api/score':
             pseudo = data.get('pseudo', '').strip()
             password = data.get('password', '').strip()
@@ -668,12 +821,37 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id, score FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
+            c.execute('SELECT id, score, submitted_grid FROM users WHERE pseudo = ? AND password_words = ?', (pseudo, password))
             user = c.fetchone()
             
             if user:
-                # Update streak if the game is active
-                if game_state.get("is_active"):
+                # Anti-doublon : Si le joueur a déjà soumis sa grille pour ce live
+                if user[2] is not None:
+                    conn.close()
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Grille déjà soumise pour cette session'}).encode('utf-8'))
+                    return
+
+                # Vérification session retardataires
+                is_late_sub = False
+                late_active = False
+                late_sess = game_state.get("late_session", {})
+                if late_sess.get("is_active"):
+                    l_elapsed = time.time() - late_sess["start_time"] if late_sess.get("start_time") else 0
+                    if l_elapsed < late_sess.get("duration", 300):
+                        late_active = True
+                    else:
+                        game_state["late_session"]["is_active"] = False
+
+                elapsed = time.time() - game_state["start_time"] if game_state.get("start_time") else 0
+                main_time_left = max(0, int(game_state.get("duration", 600) - elapsed))
+                if late_active and (main_time_left == 0 or game_state.get("is_locked", False)):
+                    is_late_sub = True
+
+                # Update streak if the game is active OR late session is active
+                if game_state.get("is_active") or late_active:
                     c.execute('SELECT current_streak, max_streak, last_live_id FROM users WHERE id = ?', (user[0],))
                     streak_info = c.fetchone()
                     if streak_info:
@@ -695,15 +873,17 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                             c.execute('UPDATE users SET current_streak = ?, max_streak = ?, last_live_id = ? WHERE id = ?', 
                                       (curr_streak, m_streak, last_live, user[0]))
 
-                if game_state.get("is_active") and game_state.get("verification_mode") == "strict":
+                if (game_state.get("is_active") or late_active) and game_state.get("verification_mode") == "strict":
                     boxes_checked = len(checked_phrases)
-                    c.execute('UPDATE users SET submitted_grid = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ? WHERE id = ?', (json.dumps(checked_phrases), boxes_checked, user[0]))
+                    now_t = time.time()
+                    c.execute('UPDATE users SET submitted_grid = ?, is_late = ?, submitted_at = ?, lives_participated = lives_participated + 1, boxes_checked = boxes_checked + ? WHERE id = ?', 
+                              (json.dumps(checked_phrases), 1 if is_late_sub else 0, now_t, boxes_checked, user[0]))
                     conn.commit()
                     conn.close()
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({'success': True, 'pending': True}).encode('utf-8'))
+                    self.wfile.write(json.dumps({'success': True, 'pending': True, 'is_late': is_late_sub}).encode('utf-8'))
                     return
 
                 boxes_checked = len(checked_phrases)
@@ -821,7 +1001,8 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 conn = get_db_connection()
                 c = conn.cursor()
                 # Reset score_live for all users when a new live starts
-                c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL')
+                c.execute('UPDATE users SET score_live = 0, submitted_grid = NULL, is_late = 0, submitted_at = 0')
+                game_state["late_session"] = {"is_active": False, "start_time": None, "duration": 300}
                 c.execute('INSERT INTO lives DEFAULT VALUES')
                 c.execute('SELECT MAX(id) FROM lives')
                 max_live = c.fetchone()[0]
@@ -855,12 +1036,14 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["is_locked"] = False
                 game_state["start_time"] = None
                 game_state["lock_start_time"] = None
+                game_state["late_session"]["is_active"] = False
+                game_state["late_session"]["start_time"] = None
                 
-                # Evaluate scores for players who submitted early
+                # Evaluate scores for players who submitted
                 conn = get_db_connection()
                 c = conn.cursor()
                 
-                # Update phrase stats (amateur style code)
+                # Update phrase stats
                 try:
                     for phrase_said in game_state["admin_ticked"]:
                         c.execute('SELECT count FROM phrase_stats WHERE phrase = ?', (phrase_said,))
@@ -872,21 +1055,22 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 except Exception as e:
                     pass
 
-                c.execute('SELECT id, score, submitted_grid FROM users WHERE submitted_grid IS NOT NULL')
+                c.execute('SELECT id, score, submitted_grid, is_late FROM users WHERE submitted_grid IS NOT NULL')
                 for row in c.fetchall():
-                    user_id, current_score, submitted_grid_json = row
+                    user_id, current_score, submitted_grid_json, is_late_val = row
+                    score_multiplier = 5 if is_late_val else 10
                     try:
                         checked_phrases = json.loads(submitted_grid_json)
                         score_to_add = 0
                         boxes_correct = 0
                         for phrase in checked_phrases:
                             if phrase in game_state["admin_ticked"]:
-                                score_to_add += 10
+                                score_to_add += score_multiplier
                                 boxes_correct += 1
                         new_score = current_score + score_to_add
-                        c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_correct, user_id))
+                        c.execute('UPDATE users SET score = ?, score_live = score_live + ?, submitted_grid = NULL, is_late = 0, boxes_correct = boxes_correct + ? WHERE id = ?', (new_score, score_to_add, boxes_correct, user_id))
                     except:
-                        c.execute('UPDATE users SET submitted_grid = NULL WHERE id = ?', (user_id,))
+                        c.execute('UPDATE users SET submitted_grid = NULL, is_late = 0 WHERE id = ?', (user_id,))
                 
                 # Award a win to the player(s) with the highest score_live
                 c.execute('SELECT MAX(score_live) FROM users')

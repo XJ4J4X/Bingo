@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Dock - Bingo du Manoir</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #11141a;
+            color: #f1f3f5;
+            padding: 14px;
+            font-size: 14px;
+            user-select: none;
+        }
+        .dock-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .dock-title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+        }
+        .dock-title img {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-offline { background: #e74c3c; color: white; }
+        .status-active { background: #2ecc71; color: white; }
+        .status-locked { background: #f39c12; color: white; }
+
+        .stat-card {
+            background: #1c212b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #8c9ba5;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: monospace;
+            color: #ffffff;
+        }
+        .stat-value.late {
+            color: #e67e22;
+        }
+
+        .btn-late {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            color: white;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(230, 126, 34, 0.35);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-late:hover {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(230, 126, 34, 0.5);
+        }
+        .btn-late:active {
+            transform: translateY(1px);
+        }
+        .btn-late:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .msg-box {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
+            min-height: 18px;
+            font-weight: 600;
+        }
+        .msg-success { color: #2ecc71; }
+        .msg-error { color: #e74c3c; }
+        .auth-warning {
+            background: #e74c3c;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="auth-alert" class="auth-warning" style="display: none;">
+        ⚠️ Clé d'admin manquante dans l'URL. Ajoute <code>?key=TON_MDP</code> à l'URL du dock.
+    </div>
+
+    <div class="dock-header">
+        <div class="dock-title">
+            <img src="favicon.png" alt="Logo">
+            <span>BINGO OBS DOCK</span>
+        </div>
+        <span id="live-status" class="status-badge status-offline">HORS LIGNE</span>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Chrono du Live</div>
+        <div id="main-timer" class="stat-value">00:00</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Chrono Retardataires</div>
+        <div id="late-timer" class="stat-value late">--:--</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Grilles Validées</div>
+        <div id="submissions-count" class="stat-value">0</div>
+    </div>
+
+    <button id="trigger-late-btn" class="btn-late">
+        <span>⏰ LANCER RETARDATAIRES (5 MIN)</span>
+    </button>
+    <div id="dock-msg" class="msg-box"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const adminKey = urlParams.get('key');
+
+        if (!adminKey) {
+            document.getElementById('auth-alert').style.display = 'block';
+        }
+
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        async function syncObsState() {
+            try {
+                const res = await fetch('/api/game/state?t=' + Date.now());
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const statusBadge = document.getElementById('live-status');
+                const mainTimer = document.getElementById('main-timer');
+                const lateTimer = document.getElementById('late-timer');
+                const subCount = document.getElementById('submissions-count');
+                const btnLate = document.getElementById('trigger-late-btn');
+
+                subCount.textContent = data.submissions_count || 0;
+
+                if (!data.is_active) {
+                    statusBadge.textContent = "HORS LIGNE";
+                    statusBadge.className = "status-badge status-offline";
+                    mainTimer.textContent = "00:00";
+                    btnLate.disabled = true;
+                } else {
+                    btnLate.disabled = false;
+                    if (data.is_locked) {
+                        statusBadge.textContent = "VÉRIFICATION";
+                        statusBadge.className = "status-badge status-locked";
+                    } else {
+                        statusBadge.textContent = "EN COURS";
+                        statusBadge.className = "status-badge status-active";
+                    }
+                    mainTimer.textContent = formatTime(data.time_left);
+                }
+
+                if (data.late_session && data.late_session.is_active) {
+                    lateTimer.textContent = formatTime(data.late_session.time_left);
+                    btnLate.textContent = "⏰ EN COURS (" + formatTime(data.late_session.time_left) + ")";
+                } else {
+                    lateTimer.textContent = "INACTIF";
+                    btnLate.innerHTML = "<span>⏰ LANCER RETARDATAIRES (5 MIN)</span>";
+                }
+            } catch (e) {
+                console.error("Erreur sync OBS", e);
+            }
+        }
+
+        document.getElementById('trigger-late-btn').addEventListener('click', async () => {
+            const msg = document.getElementById('dock-msg');
+            msg.textContent = "";
+            if (!adminKey) {
+                msg.className = "msg-box msg-error";
+                msg.textContent = "Clé manquante dans l'URL !";
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/action/trigger_late?key=' + encodeURIComponent(adminKey), {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    msg.className = "msg-box msg-success";
+                    msg.textContent = "✓ Session 5 min lancée !";
+                    setTimeout(() => { msg.textContent = ""; }, 4000);
+                    syncObsState();
+                } else {
+                    msg.className = "msg-box msg-error";
+                    msg.textContent = data.error || "Erreur de déclenchement";
+                }
+            } catch (err) {
+                msg.className = "msg-box msg-error";
+                msg.textContent = "Erreur de connexion";
+            }
+        });
+
+        syncObsState();
+        setInterval(syncObsState, 1000);
+    </script>
+</body>
+</html>
