@@ -70,6 +70,7 @@ game_state = {
     "active_phrases": [],
     "admin_ticked": [],
     "presentation_ticked": [],
+    "presentation_visible": True,
     "color_choice_user_pseudo": None,
     "rules_enabled": False,
     "submissions_count": 0,
@@ -783,6 +784,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 'is_active': game_state.get('is_active', False),
                 'is_test': bool(game_state.get('is_test', False)),
+                'visible': bool(game_state.get('presentation_visible', True)),
                 'phrases': phrases,
                 'ticked': list(game_state.get('presentation_ticked', []))
             }).encode('utf-8'))
@@ -1344,6 +1346,42 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 'success': True,
                 'ticked': []
+            }).encode('utf-8'))
+
+        elif url_path == '/api/presentation/visibility':
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            key = params.get('key', [None])[0] or data.get('key') or data.get('password')
+            
+            admin_auth = False
+            if key:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id FROM admins WHERE password = ?', (key,))
+                if c.fetchone():
+                    admin_auth = True
+                conn.close()
+            elif check_admin(self.headers):
+                admin_auth = True
+                
+            if not admin_auth:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Mot de passe incorrect ou non autorisé'}).encode('utf-8'))
+                return
+                
+            if 'visible' in data and isinstance(data['visible'], bool):
+                game_state['presentation_visible'] = data['visible']
+            else:
+                game_state['presentation_visible'] = not bool(game_state.get('presentation_visible', True))
+                
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'success': True,
+                'visible': game_state['presentation_visible']
             }).encode('utf-8'))
 
         elif url_path.startswith('/api/admin/'):

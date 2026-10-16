@@ -48,6 +48,7 @@
             padding: clamp(6px, 1.1vmin, 14px);
             box-sizing: border-box;
             overflow: hidden;
+            transition: opacity 0.25s ease;
         }
 
         /* Par défaut (mode paysage / standard 16:9 / carré) : 4 colonnes x 4 lignes */
@@ -381,6 +382,9 @@
                 const res = await fetch('/api/presentation/state?t=' + Date.now());
                 if (!res.ok) return;
                 const data = await res.json();
+
+                const isVisible = data.visible !== false;
+                gridEl.style.opacity = isVisible ? '1' : '0';
 
                 const phrases = data.phrases || [];
                 const phrasesKey = phrases.join('||');

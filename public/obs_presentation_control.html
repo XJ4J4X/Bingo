@@ -42,9 +42,12 @@
         </section>
 
         <section id="control-panel" class="hidden">
-            <div class="game-header">
+            <div class="game-header" style="flex-wrap: wrap; gap: 10px;">
                 <h2>Grille du Live</h2>
-                <button id="btn-reset-all">Tout décocher</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btn-toggle-visibility">Masquer le Bingo</button>
+                    <button id="btn-reset-all">Tout décocher</button>
+                </div>
             </div>
 
             <div id="bingo-grid" class="grid">
@@ -72,12 +75,14 @@
         const gameMessage = document.getElementById('game-message');
         const cardsGrid = document.getElementById('bingo-grid');
         const counterEl = document.getElementById('validated-counter');
+        const btnToggleVisibility = document.getElementById('btn-toggle-visibility');
         const btnResetAll = document.getElementById('btn-reset-all');
         const btnLogout = document.getElementById('logout-btn');
         const themeToggle = document.getElementById('theme-toggle');
 
         let currentPhrasesKey = "";
         let currentTicked = [];
+        let currentVisible = true;
         let isProcessing = false;
         let msgTimeout = null;
 
@@ -174,6 +179,37 @@
             showLogin();
         });
 
+        function updateVisibilityButton() {
+            if (!btnToggleVisibility) return;
+            if (currentVisible) {
+                btnToggleVisibility.textContent = "Masquer le Bingo";
+                btnToggleVisibility.style.backgroundColor = "";
+            } else {
+                btnToggleVisibility.textContent = "Afficher le Bingo";
+                btnToggleVisibility.style.backgroundColor = "#27ae60";
+            }
+        }
+
+        btnToggleVisibility.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/presentation/visibility', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: adminKey, visible: !currentVisible })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    currentVisible = data.visible;
+                    updateVisibilityButton();
+                    showStatus(currentVisible ? "Bingo affiché sur le live." : "Bingo masqué sur le live.");
+                } else if (res.status === 401) {
+                    showLogin();
+                }
+            } catch (e) {
+                showStatus("Erreur de communication.", true);
+            }
+        });
+
         btnResetAll.addEventListener('click', async () => {
             if (!confirm("Décocher toutes les cases de la présentation ?")) return;
             try {
@@ -256,6 +292,9 @@
                 const res = await fetch('/api/presentation/state?t=' + Date.now());
                 if (!res.ok) return;
                 const data = await res.json();
+
+                currentVisible = data.visible !== false;
+                updateVisibilityButton();
 
                 const phrases = data.phrases || [];
                 const phrasesKey = phrases.join('||');
