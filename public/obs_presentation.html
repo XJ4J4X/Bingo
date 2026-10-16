@@ -28,65 +28,98 @@
             background: #00ff00 !important;
         }
 
-        /* Grille 4x4 plein écran 100% scalable dans OBS */
+        /* Grille plein écran 100% adaptable dans OBS */
         .bingo-grid {
-            width: 100vw;
-            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: 1.2vmin;
-            padding: 1.2vmin;
+            gap: clamp(4px, 1.2vmin, 16px);
+            padding: clamp(4px, 1.2vmin, 16px);
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
-        /* Case du Bingo : fine transparence aérée (pas gris terne) */
+        /* Par défaut (mode paysage / standard 16:9 / carré) : 4 colonnes x 4 lignes */
+        .bingo-grid.layout-4x4 {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+        }
+
+        /* Mode portrait / vertical (source OBS étroite, ex: sur le côté du stream ou format mobile 9:16) : 2 colonnes x 8 lignes */
+        .bingo-grid.layout-2x8 {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+        }
+
+        /* Mode ultra-étroit (colonne très fine) : 1 colonne x 16 lignes */
+        .bingo-grid.layout-1x16 {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(16, 1fr);
+        }
+
+        /* Mode bandeau horizontal large (ticker en bas d'écran) : 8 colonnes x 2 lignes */
+        .bingo-grid.layout-8x2 {
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+        }
+
+        /* Case du Bingo : fine transparence aérée (fond légèrement grisé translucide) */
         .bingo-card {
             position: relative;
             background: rgba(15, 23, 42, 0.32);
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
             border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 1.2vmin;
-            padding: 0.8vmin;
+            border-radius: clamp(6px, 1.2vmin, 14px);
+            padding: clamp(6px, 1vmin, 14px);
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             overflow: hidden;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         /* Numéro de case discret */
         .card-number {
             position: absolute;
-            top: 0.5vmin;
-            left: 0.7vmin;
+            top: clamp(3px, 0.6vmin, 8px);
+            left: clamp(4px, 0.8vmin, 10px);
             font-size: clamp(8px, 1.1vmin, 13px);
             font-weight: 800;
-            color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.32);
             font-family: ui-monospace, SFMono-Regular, monospace;
             line-height: 1;
+            z-index: 3;
+            pointer-events: none;
         }
 
-        /* Texte de la phrase avec typographie fluide scalable */
+        /* Texte de la phrase : dimensionné automatiquement pour remplir la case au maximum sans déborder */
         .card-text {
-            font-size: clamp(11px, 2vmin, 24px);
+            display: block;
+            width: 100%;
             font-weight: 800;
-            line-height: 1.25;
+            line-height: 1.22;
             color: #ffffff;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.85);
-            word-break: break-word;
-            padding: 0.4vmin;
+            word-break: normal;
+            overflow-wrap: break-word;
+            padding: 0 4px;
             z-index: 2;
-            transition: all 0.25s ease;
+            transition: color 0.25s ease;
         }
 
-        /* État VALIDÉ : nuance vert émeraude douce et classe */
+        /* État VALIDÉ : nuance vert émeraude douce et sobre */
         .bingo-card.ticked {
-            background: rgba(16, 185, 129, 0.22);
+            background: rgba(16, 185, 129, 0.24);
             border: 1.5px solid rgba(52, 211, 153, 0.85);
-            box-shadow: 0 0 16px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.32), inset 0 0 12px rgba(16, 185, 129, 0.16);
             transform: scale(0.985);
         }
 
@@ -95,19 +128,19 @@
             text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 197, 94, 0.45);
         }
 
-        /* Badge VALIDÉ discret en haut à droite (doux, vert émeraude, non agressif) */
+        /* Badge VALIDÉ discret en haut à droite */
         .stamp-badge {
             position: absolute;
-            top: 0.6vmin;
-            right: 0.8vmin;
-            background: rgba(16, 185, 129, 0.88);
+            top: clamp(3px, 0.6vmin, 8px);
+            right: clamp(4px, 0.8vmin, 10px);
+            background: rgba(16, 185, 129, 0.92);
             color: #ffffff;
             border: 1px solid rgba(255, 255, 255, 0.6);
-            padding: 0.2vmin 0.7vmin;
+            padding: 0.15vmin 0.6vmin;
             border-radius: 2vmin;
-            font-size: clamp(8px, 1.1vmin, 13px);
+            font-size: clamp(7px, 1vmin, 12px);
             font-weight: 800;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
             text-transform: uppercase;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
             z-index: 10;
@@ -139,7 +172,7 @@
     </style>
 </head>
 <body>
-    <main class="bingo-grid" id="bingo-grid">
+    <main class="bingo-grid layout-4x4" id="bingo-grid">
         <!-- 16 cases générées dynamiquement -->
     </main>
 
@@ -152,11 +185,103 @@
             document.body.classList.add('bg-green');
         }
 
+        // Support d'opacité personnalisée optionnelle (?opacity=0.4)
+        const opacityParam = parseFloat(urlParams.get('opacity'));
+        if (!isNaN(opacityParam) && opacityParam >= 0 && opacityParam <= 1) {
+            document.documentElement.style.setProperty('--card-opacity', opacityParam);
+        }
+
         const gridEl = document.getElementById('bingo-grid');
         let currentPhrasesKey = "";
         let currentTicked = [];
         let isFirstSync = true;
         let audioCtx = null;
+        let resizeDebounce = null;
+
+        // Configuration du nombre de colonnes forcé (optionnel ?cols=2 ou ?cols=4)
+        const forcedCols = parseInt(urlParams.get('cols') || urlParams.get('c'));
+
+        // Adaptation dynamique automatique de la disposition selon la taille de la source OBS
+        function updateGridLayout() {
+            if (forcedCols && !isNaN(forcedCols) && forcedCols >= 1 && forcedCols <= 16) {
+                const cols = forcedCols;
+                const rows = Math.ceil(16 / cols);
+                gridEl.className = 'bingo-grid';
+                gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                gridEl.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+                return;
+            }
+
+            const w = window.innerWidth || document.documentElement.clientWidth || 1920;
+            const h = window.innerHeight || document.documentElement.clientHeight || 1080;
+            const ratio = w / h;
+
+            gridEl.style.gridTemplateColumns = '';
+            gridEl.style.gridTemplateRows = '';
+
+            // Détection automatique du ratio de la source OBS
+            if (ratio >= 2.8) {
+                // Bandeau ultra-large (ex: ticker en bas de stream)
+                gridEl.className = 'bingo-grid layout-8x2';
+            } else if (ratio < 0.38) {
+                // Colonne ultra-étroite
+                gridEl.className = 'bingo-grid layout-1x16';
+            } else if (ratio < 0.88) {
+                // Format portrait / vertical (Shorts / TikTok / colonne latérale)
+                gridEl.className = 'bingo-grid layout-2x8';
+            } else {
+                // Format standard (16:9, 16:10, 4:3, carré)
+                gridEl.className = 'bingo-grid layout-4x4';
+            }
+        }
+
+        // Ajustement automatique de la taille du texte pour chaque case (FitText sans dépassement)
+        function autoFitAllCards() {
+            const cards = gridEl.querySelectorAll('.bingo-card');
+            if (cards.length === 0) return;
+
+            cards.forEach(card => {
+                const textEl = card.querySelector('.card-text');
+                if (!textEl) return;
+
+                const cardW = card.clientWidth;
+                const cardH = card.clientHeight;
+                if (cardW <= 0 || cardH <= 0) return;
+
+                // Marge de sécurité pour laisser de la place au numéro et au badge
+                const availW = Math.max(20, cardW - 16);
+                const availH = Math.max(20, cardH - 24);
+
+                let minSize = 9;
+                let maxSize = Math.max(minSize, Math.min(48, Math.floor(availH * 0.44)));
+                let bestSize = minSize;
+
+                // Recherche dichotomique rapide (5 itérations max) de la taille de texte optimale
+                while (minSize <= maxSize) {
+                    const mid = Math.floor((minSize + maxSize) / 2);
+                    textEl.style.fontSize = mid + 'px';
+                    if (textEl.scrollWidth <= availW && textEl.scrollHeight <= availH) {
+                        bestSize = mid;
+                        minSize = mid + 1;
+                    } else {
+                        maxSize = mid - 1;
+                    }
+                }
+                textEl.style.fontSize = bestSize + 'px';
+            });
+        }
+
+        function handleResize() {
+            updateGridLayout();
+            clearTimeout(resizeDebounce);
+            resizeDebounce = setTimeout(autoFitAllCards, 40);
+        }
+
+        window.addEventListener('resize', handleResize);
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => handleResize());
+            ro.observe(document.body);
+        }
 
         // Son doux et agréable de validation (Carillon Web Audio doux)
         function playSoftValidationChime() {
@@ -168,7 +293,7 @@
                 
                 const now = audioCtx.currentTime;
 
-                // Note principale C5 (523Hz) glissant doucement vers E5 (659Hz)
+                // Note principale C5 glissant doucement vers E5
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
                 osc1.type = 'sine';
@@ -176,7 +301,7 @@
                 osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.08);
 
                 gain1.gain.setValueAtTime(0.001, now);
-                gain1.gain.linearRampToValueAtTime(0.12, now + 0.02); // Volume très doux
+                gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
                 gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
 
                 osc1.connect(gain1);
@@ -184,7 +309,7 @@
                 osc1.start(now);
                 osc1.stop(now + 0.5);
 
-                // Harmonique d'octave C6 (1046Hz) subtile pour la brillance
+                // Harmonique C6 subtile
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
                 osc2.type = 'triangle';
@@ -199,7 +324,6 @@
                 osc2.start(now);
                 osc2.stop(now + 0.4);
             } catch (e) {
-                // Fallback ting.mp3 à très faible volume
                 try {
                     const sound = new Audio('ting.mp3');
                     sound.volume = 0.2;
@@ -209,6 +333,7 @@
         }
 
         function renderGrid(phrases) {
+            updateGridLayout();
             gridEl.innerHTML = "";
             phrases.forEach((phrase, idx) => {
                 const card = document.createElement('div');
@@ -229,13 +354,17 @@
                 `;
                 gridEl.appendChild(card);
             });
+
+            requestAnimationFrame(() => {
+                autoFitAllCards();
+                setTimeout(autoFitAllCards, 80);
+            });
         }
 
         function updateTickedCards(newTickedList) {
             const previousTicked = currentTicked;
             currentTicked = newTickedList || [];
 
-            // Détection si de nouvelles cases ont été validées (hors premier chargement)
             if (!isFirstSync) {
                 const hasNewValidation = currentTicked.some(phrase => !previousTicked.includes(phrase));
                 if (hasNewValidation) {
@@ -288,6 +417,7 @@
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         }, { once: true });
 
+        updateGridLayout();
         syncPresentationState();
         setInterval(syncPresentationState, 1000);
     </script>

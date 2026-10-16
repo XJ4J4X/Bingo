@@ -8,7 +8,9 @@ Toutes les modifications notables apportées au projet **Aminato Bingo** sont co
 
 ### ✨ Nouveautés
 - **Overlay OBS de Présentation Streamer (`obs_presentation.html`)** :
-  - Grille de 16 cases 100% scalable et responsive (unités `vmin`), sans titre ni bordure, optimisée pour un affichage plein écran derrière Aminato.
+  - Grille de 16 cases 100% auto-adaptable et responsive dans OBS : détection automatique du ratio d'affichage (4x4 standard paysage, 2x8 portrait pour colonne latérale ou stream vertical TikTok/Shorts, 8x2 bandeau large, ou forçage via `?cols=...`), sans titre ni bordure.
+  - Moteur de redimensionnement de texte dynamique (FitText) par recherche dichotomique : chaque phrase s'ajuste en direct à la taille maximale possible sans déborder de sa case ni empiéter sur le badge.
+  - Surveillance continue des dimensions via `ResizeObserver` pour réagir instantanément aux étirements ou redimensionnements de la source dans OBS Studio.
   - Mode fond transparent natif (`?bg=transparent`) avec cases subtilement grisées et translucides (`backdrop-filter`) pour s'intégrer élégamment à la caméra.
   - Mode Fond Vert Chroma Key (`?bg=green`) pour intégration propre sur fond `#00FF00`.
   - Badge discret `✓ Validé` vert émeraude au coin des cases validées.
