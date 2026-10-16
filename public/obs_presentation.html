@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Overlay OBS - Bingo Présentation</title>
     <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         html, body {
@@ -38,8 +44,8 @@
             width: 100%;
             height: 100%;
             display: grid;
-            gap: clamp(4px, 1.2vmin, 16px);
-            padding: clamp(4px, 1.2vmin, 16px);
+            gap: clamp(6px, 1.1vmin, 14px);
+            padding: clamp(6px, 1.1vmin, 14px);
             box-sizing: border-box;
             overflow: hidden;
         }
@@ -50,7 +56,7 @@
             grid-template-rows: repeat(4, 1fr);
         }
 
-        /* Mode portrait / vertical (source OBS étroite, ex: sur le côté du stream ou format mobile 9:16) : 2 colonnes x 8 lignes */
+        /* Mode portrait / vertical (source OBS étroite, ex: 450x1000 sur le côté ou 9:16) : 2 colonnes x 8 lignes */
         .bingo-grid.layout-2x8 {
             grid-template-columns: repeat(2, 1fr);
             grid-template-rows: repeat(8, 1fr);
@@ -68,106 +74,104 @@
             grid-template-rows: repeat(2, 1fr);
         }
 
-        /* Case du Bingo : fine transparence aérée (fond légèrement grisé translucide) */
+        /* Case du Bingo : bleu marine foncé profond, net (sans flou), ultra lisible */
         .bingo-card {
             position: relative;
-            background: rgba(15, 23, 42, 0.32);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: clamp(6px, 1.2vmin, 14px);
-            padding: clamp(6px, 1vmin, 14px);
+            background: rgba(13, 27, 58, 0.88);
+            border: 2px solid rgba(96, 165, 250, 0.45);
+            border-radius: clamp(8px, 1.2vmin, 14px);
+            padding: clamp(18px, 2.4vmin, 26px) clamp(8px, 1.2vmin, 16px) clamp(8px, 1.2vmin, 14px);
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
             overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+            transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
-        /* Numéro de case discret */
+        /* Numéro de case net en haut à gauche */
         .card-number {
             position: absolute;
-            top: clamp(3px, 0.6vmin, 8px);
-            left: clamp(4px, 0.8vmin, 10px);
-            font-size: clamp(8px, 1.1vmin, 13px);
+            top: clamp(4px, 0.7vmin, 8px);
+            left: clamp(6px, 0.9vmin, 12px);
+            font-size: clamp(10px, 1.3vmin, 14px);
             font-weight: 800;
-            color: rgba(255, 255, 255, 0.32);
+            color: #93c5fd;
             font-family: ui-monospace, SFMono-Regular, monospace;
             line-height: 1;
             z-index: 3;
             pointer-events: none;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
         }
 
-        /* Texte de la phrase : dimensionné automatiquement pour remplir la case au maximum sans déborder */
+        /* Texte de la phrase : blanc pur, net, sans halo flou */
         .card-text {
             display: block;
             width: 100%;
+            font-size: clamp(15px, 2.4vmin, 32px);
             font-weight: 800;
-            line-height: 1.22;
+            line-height: 1.2;
             color: #ffffff;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.85);
+            text-shadow: 0 2px 3px rgba(0, 0, 0, 0.9);
             word-break: normal;
             overflow-wrap: break-word;
-            padding: 0 4px;
             z-index: 2;
-            transition: color 0.25s ease;
         }
 
-        /* État VALIDÉ : nuance vert émeraude douce et sobre */
+        /* État VALIDÉ : vert émeraude soutenu, net et très lisible (sans scale flou) */
         .bingo-card.ticked {
-            background: rgba(16, 185, 129, 0.24);
-            border: 1.5px solid rgba(52, 211, 153, 0.85);
-            box-shadow: 0 0 16px rgba(16, 185, 129, 0.32), inset 0 0 12px rgba(16, 185, 129, 0.16);
-            transform: scale(0.985);
+            background: rgba(6, 78, 59, 0.92);
+            border: 2px solid #34d399;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), inset 0 0 12px rgba(16, 185, 129, 0.25);
+        }
+
+        .bingo-card.ticked .card-number {
+            color: #a7f3d0;
         }
 
         .bingo-card.ticked .card-text {
-            color: #f0fdf4;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 197, 94, 0.45);
+            color: #ffffff;
+            text-shadow: 0 2px 3px rgba(0, 0, 0, 0.95);
         }
 
-        /* Badge VALIDÉ discret en haut à droite */
+        /* Badge VALIDÉ discret et net en haut à droite */
         .stamp-badge {
             position: absolute;
-            top: clamp(3px, 0.6vmin, 8px);
-            right: clamp(4px, 0.8vmin, 10px);
-            background: rgba(16, 185, 129, 0.92);
+            top: clamp(4px, 0.6vmin, 8px);
+            right: clamp(6px, 0.8vmin, 10px);
+            background: #10b981;
             color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            padding: 0.15vmin 0.6vmin;
-            border-radius: 2vmin;
-            font-size: clamp(7px, 1vmin, 12px);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            padding: 2px 7px;
+            border-radius: 999px;
+            font-size: clamp(9px, 1.1vmin, 12px);
             font-weight: 800;
             letter-spacing: 0.4px;
             text-transform: uppercase;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
             z-index: 10;
             pointer-events: none;
             opacity: 0;
-            transform: scale(0.6);
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: opacity 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 0.3vmin;
+            gap: 3px;
             white-space: nowrap;
         }
 
         .bingo-card.ticked .stamp-badge {
-            transform: scale(1);
             opacity: 1;
         }
 
-        /* En mode Fond Vert (Chroma Key), cartes opaques pour découpe nette */
+        /* En mode Fond Vert (Chroma Key), cartes 100% opaques pour découpe nette */
         body.bg-green .bingo-card {
-            background: #111827 !important;
-            border-color: #38bdf8 !important;
+            background: #0d1b3a !important;
+            border-color: #60a5fa !important;
         }
         body.bg-green .bingo-card.ticked {
-            background: #1e1b4b !important;
-            border-color: #f59e0b !important;
-            box-shadow: 0 0 18px rgba(245, 158, 11, 0.55) !important;
+            background: #064e3b !important;
+            border-color: #34d399 !important;
         }
     </style>
 </head>
@@ -183,12 +187,6 @@
         const bgParam = (urlParams.get('bg') || '').toLowerCase();
         if (bgParam === 'green' || bgParam === 'greenscreen') {
             document.body.classList.add('bg-green');
-        }
-
-        // Support d'opacité personnalisée optionnelle (?opacity=0.4)
-        const opacityParam = parseFloat(urlParams.get('opacity'));
-        if (!isNaN(opacityParam) && opacityParam >= 0 && opacityParam <= 1) {
-            document.documentElement.style.setProperty('--card-opacity', opacityParam);
         }
 
         const gridEl = document.getElementById('bingo-grid');
@@ -219,68 +217,64 @@
             gridEl.style.gridTemplateColumns = '';
             gridEl.style.gridTemplateRows = '';
 
-            // Détection automatique du ratio de la source OBS
             if (ratio >= 2.8) {
-                // Bandeau ultra-large (ex: ticker en bas de stream)
                 gridEl.className = 'bingo-grid layout-8x2';
             } else if (ratio < 0.38) {
-                // Colonne ultra-étroite
                 gridEl.className = 'bingo-grid layout-1x16';
             } else if (ratio < 0.88) {
-                // Format portrait / vertical (Shorts / TikTok / colonne latérale)
                 gridEl.className = 'bingo-grid layout-2x8';
             } else {
-                // Format standard (16:9, 16:10, 4:3, carré)
                 gridEl.className = 'bingo-grid layout-4x4';
             }
         }
 
-        // Ajustement automatique de la taille du texte pour chaque case (FitText sans dépassement)
+        // Ajustement intelligent et harmonieux de la taille du texte (net, grand et sans débordement)
         function autoFitAllCards() {
             const cards = gridEl.querySelectorAll('.bingo-card');
             if (cards.length === 0) return;
+
+            const firstCard = cards[0];
+            const cardW = firstCard.clientWidth;
+            const cardH = firstCard.clientHeight;
+            if (cardW <= 0 || cardH <= 0) return;
+
+            // Taille cible harmonieuse basée sur les dimensions de la case
+            const baseIdealSize = Math.min(36, Math.max(14, Math.round(Math.sqrt(cardW * cardH) * 0.125)));
+            const minAllowedSize = 12;
 
             cards.forEach(card => {
                 const textEl = card.querySelector('.card-text');
                 if (!textEl) return;
 
-                const cardW = card.clientWidth;
-                const cardH = card.clientHeight;
-                if (cardW <= 0 || cardH <= 0) return;
+                const style = window.getComputedStyle(card);
+                const padTop = parseFloat(style.paddingTop) || 18;
+                const padBottom = parseFloat(style.paddingBottom) || 8;
+                const availH = Math.max(20, card.clientHeight - padTop - padBottom);
 
-                // Marge de sécurité pour laisser de la place au numéro et au badge
-                const availW = Math.max(20, cardW - 16);
-                const availH = Math.max(20, cardH - 24);
+                let size = baseIdealSize;
+                textEl.style.fontSize = size + 'px';
 
-                let minSize = 9;
-                let maxSize = Math.max(minSize, Math.min(48, Math.floor(availH * 0.44)));
-                let bestSize = minSize;
-
-                // Recherche dichotomique rapide (5 itérations max) de la taille de texte optimale
-                while (minSize <= maxSize) {
-                    const mid = Math.floor((minSize + maxSize) / 2);
-                    textEl.style.fontSize = mid + 'px';
-                    if (textEl.scrollWidth <= availW && textEl.scrollHeight <= availH) {
-                        bestSize = mid;
-                        minSize = mid + 1;
-                    } else {
-                        maxSize = mid - 1;
-                    }
+                // Réduit uniquement si une phrase très longue dépasse en hauteur ou en largeur
+                while (size > minAllowedSize && (textEl.offsetHeight > availH || textEl.scrollWidth > textEl.clientWidth + 2)) {
+                    size -= 1;
+                    textEl.style.fontSize = size + 'px';
                 }
-                textEl.style.fontSize = bestSize + 'px';
             });
         }
 
         function handleResize() {
             updateGridLayout();
             clearTimeout(resizeDebounce);
-            resizeDebounce = setTimeout(autoFitAllCards, 40);
+            resizeDebounce = setTimeout(autoFitAllCards, 30);
         }
 
         window.addEventListener('resize', handleResize);
         if (window.ResizeObserver) {
             const ro = new ResizeObserver(() => handleResize());
             ro.observe(document.body);
+        }
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(autoFitAllCards);
         }
 
         // Son doux et agréable de validation (Carillon Web Audio doux)
@@ -293,7 +287,6 @@
                 
                 const now = audioCtx.currentTime;
 
-                // Note principale C5 glissant doucement vers E5
                 const osc1 = audioCtx.createOscillator();
                 const gain1 = audioCtx.createGain();
                 osc1.type = 'sine';
@@ -309,7 +302,6 @@
                 osc1.start(now);
                 osc1.stop(now + 0.5);
 
-                // Harmonique C6 subtile
                 const osc2 = audioCtx.createOscillator();
                 const gain2 = audioCtx.createGain();
                 osc2.type = 'triangle';
@@ -357,7 +349,7 @@
 
             requestAnimationFrame(() => {
                 autoFitAllCards();
-                setTimeout(autoFitAllCards, 80);
+                setTimeout(autoFitAllCards, 60);
             });
         }
 
@@ -412,7 +404,6 @@
             return div.innerHTML;
         }
 
-        // Interaction initiale pour débloquer l'audio navigateur
         window.addEventListener('click', () => {
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         }, { once: true });
