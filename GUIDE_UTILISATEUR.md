@@ -58,11 +58,26 @@ Une page indépendante, idéale pour le streaming.
 
 ---
 
-## 4️⃣ Easter Eggs et Spécificités
+## 4️⃣ Overlay OBS de Présentation & Contrôleur Direct
+
+Conçu spécialement pour afficher la grille de 16 cases en direct derrière Aminato en stream sans impacter les points.
+
+- **Overlay Stream (`/obs_presentation.html`)** :
+  - **Fond Transparent (recommandé)** : `?bg=transparent` pour une incrustation directe et épurée sur OBS.
+  - **Fond Vert Chroma Key** : `?bg=green` pour découper sur fond vert `#00FF00`.
+  - **Validation douce** : Quand une case est validée, un discret badge vert `✓ Validé` s'affiche et un carillon doux retentit.
+- **Contrôleur Modérateur (`/obs_presentation_control.html`)** :
+  - Interface dédiée pour l'équipe de modération (protégée par mot de passe admin).
+  - Coche/décoche les cases d'un simple clic.
+  - **100% visuel** : Aucun impact sur les points, grilles, streaks ni victoires des spectateurs.
+
+---
+
+## 5️⃣ Easter Eggs et Spécificités
 
 Certains joueurs ont un affichage unique et forcé par le système, peu importe leur personnalisation :
 - **Aminat0_** : Toujours affiché avec une animation CSS spéciale bleue "fantomatique" clignotante (`.aminato-effect`).
 - **J4X** : Le pseudo "J4X" clignote en rouge agressif sur tous les classements et grilles du site.
 
 ---
-*Généré pour la v1.0.0.30.*
+*Mis à jour pour la version 2.6.0.*
