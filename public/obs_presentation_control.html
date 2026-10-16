@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle Présentation Live - Aminato Bingo</title>
+    <link rel="stylesheet" href="style.css?v=5400">
+    <link rel="icon" type="image/png" href="favicon.png?v=800">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+            font-family: Arial, sans-serif;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header.site-header {
+            background-color: #2c3e50;
+            color: white;
+            width: 100%;
+            padding: 15px 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header-content h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-content img.logo {
+            height: 38px;
+            width: 38px;
+            border-radius: 50%;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .header-content img.didier {
+            height: 48px;
+            margin-left: -5px;
+            vertical-align: middle;
+            object-fit: contain;
+            transform: scaleX(-1);
+        }
+
+        main.control-wrapper {
+            width: 92%;
+            max-width: 1000px;
+            margin: 25px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 22px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .btn-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.92rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn.primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn.primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn.success-btn {
+            background-color: #27ae60;
+            color: white;
+        }
+        .btn.success-btn:hover {
+            background-color: #219150;
+        }
+
+        .btn.danger-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .btn.danger-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .btn.warning-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+        .btn.warning-btn:hover {
+            background-color: #d68910;
+        }
+
+        .btn.secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn.secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .info-banner {
+            background-color: #e8f4f8;
+            border-left: 5px solid #3498db;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 0.92rem;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Grille des 16 cases */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            width: 100%;
+        }
+
+        .bingo-tile {
+            background: #ffffff;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 14px 10px;
+            min-height: 115px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .bingo-tile:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+
+        .tile-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .tile-number {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #94a3b8;
+            font-family: monospace;
+        }
+
+        .tile-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 3px 7px;
+            border-radius: 4px;
+            background: #f1f5f9;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .tile-text {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #2c3e50;
+            line-height: 1.35;
+            text-align: center;
+            margin: auto 0;
+            word-break: break-word;
+        }
+
+        /* État VALIDÉ */
+        .bingo-tile.ticked {
+            background-color: #e8f8f5;
+            border-color: #27ae60;
+            box-shadow: 0 4px 14px rgba(39, 174, 96, 0.25);
+        }
+
+        .bingo-tile.ticked .tile-number {
+            color: #27ae60;
+        }
+
+        .bingo-tile.ticked .tile-badge {
+            background: #27ae60;
+            color: white;
+        }
+
+        .bingo-tile.ticked .tile-text {
+            color: #1e8449;
+        }
+
+        /* Toast de feedback */
+        .toast-msg {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #2c3e50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            border-left: 5px solid #27ae60;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast-msg.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- EN-TÊTE PRINCIPAL DU SITE -->
+    <header class="site-header">
+        <div class="header-content">
+            <img src="favicon.png?v=800" alt="Logo" class="logo">
+            <h1>Contrôle Présentation Live</h1>
+            <img src="didier.png?v=800" alt="Didier" class="didier">
+        </div>
+    </header>
+
+    <!-- SECTION CONNEXION (IDENTIQUE À ADMIN.HTML) -->
+    <div id="login-section" style="max-width: 400px; margin: 80px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; display: none;">
+        <img src="favicon.png?v=800" alt="Logo Admin" style="height:60px;width:60px;border-radius:50%;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+        <h2 style="margin-top: 0; color: #2c3e50;">Connexion Modérateur</h2>
+        <p style="color: #7f8c8d; font-size: 0.9rem; margin-bottom: 20px;">Entrez un mot de passe administrateur pour piloter les cases de l'overlay live.</p>
+        <form id="auth-form">
+            <input type="password" id="admin-password" placeholder="Mot de passe" style="width: 100%; padding: 12px; margin-bottom: 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;" required>
+            <button type="submit" id="login-btn" class="btn success-btn" style="width: 100%; font-size: 1rem;">Se Connecter</button>
+        </form>
+        <p id="login-message" style="color: red; margin-top: 15px; font-weight: bold;"></p>
+        <div style="margin-top: 20px;">
+            <a href="admin.html" style="color: #7f8c8d; text-decoration: none; font-size: 0.85rem;">← Retour au Panel Admin</a>
+        </div>
+    </div>
+
+    <!-- PANNEAU DE CONTRÔLE -->
+    <main class="control-wrapper" id="control-panel" style="display: none;">
+        
+        <div class="admin-card action-bar">
+            <div>
+                <h3 style="margin: 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+                    <span>🎬</span> <span>Cases du Bingo en Direct</span>
+                </h3>
+                <span style="font-size: 0.85rem; color: #7f8c8d;">Validation 100% visuelle pour l'incrustation caméra</span>
+            </div>
+            <div class="btn-group">
+                <button id="btn-copy-green" class="btn success-btn" title="Copier le lien avec fond vert #00FF00 pour découpe Chroma Key dans OBS">
+                    <span>🟢</span> <span>Lien Fond Vert</span>
+                </button>
+                <button id="btn-copy-trans" class="btn primary" title="Copier le lien avec fond 100% transparent pour source navigateur OBS">
+                    <span>✨</span> <span>Lien Transparent</span>
+                </button>
+                <button id="btn-reset-all" class="btn danger-btn" title="Décocher toutes les cases de la présentation">
+                    <span>🔄</span> <span>Tout décocher</span>
+                </button>
+                <a href="admin.html" class="btn secondary">
+                    <span>Panel Admin</span>
+                </a>
+                <button id="btn-logout" class="btn warning-btn">
+                    <span>Déconnexion</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="info-banner">
+            <span>ℹ️ <strong>Mode Présentation :</strong> Cliquez sur une case pour la valider instantanément sur l'overlay d'Aminato. Cela <u>n'affecte pas</u> les points des spectateurs.</span>
+            <span style="font-weight: 800; color: #2980b9; font-size: 1.05rem;" id="validated-counter">0 / 16 validées</span>
+        </div>
+
+        <div class="cards-grid" id="cards-grid">
+            <!-- 16 cases interactives générées dynamiquement -->
+        </div>
+    </main>
+
+    <div id="toast" class="toast-msg"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        let adminKey = urlParams.get('key') || localStorage.getItem('aminato_admin_key') || localStorage.getItem('adminToken') || "";
+
+        const loginSection = document.getElementById('login-section');
+        const controlPanel = document.getElementById('control-panel');
+        const authForm = document.getElementById('auth-form');
+        const passwordInput = document.getElementById('admin-password');
+        const loginMessage = document.getElementById('login-message');
+        const cardsGrid = document.getElementById('cards-grid');
+        const counterEl = document.getElementById('validated-counter');
+        const btnCopyGreen = document.getElementById('btn-copy-green');
+        const btnCopyTrans = document.getElementById('btn-copy-trans');
+        const btnResetAll = document.getElementById('btn-reset-all');
+        const btnLogout = document.getElementById('btn-logout');
+        const toastEl = document.getElementById('toast');
+
+        let currentPhrasesKey = "";
+        let currentTicked = [];
+        let isProcessing = false;
+
+        function showToast(text) {
+            toastEl.textContent = text;
+            toastEl.classList.add('show');
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 2500);
+        }
+
+        async function verifyKey(key) {
+            try {
+                const res = await fetch('/api/presentation/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: key, phrase: "__CHECK__" })
+                });
+                return res.status !== 401;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function init() {
+            if (adminKey) {
+                const ok = await verifyKey(adminKey);
+                if (ok) {
+                    showPanel();
+                    return;
+                } else {
+                    localStorage.removeItem('aminato_admin_key');
+                    adminKey = "";
+                }
+            }
+            showLogin();
+        }
+
+        function showLogin() {
+            controlPanel.style.display = 'none';
+            loginSection.style.display = 'block';
+            passwordInput.value = "";
+            loginMessage.textContent = "";
+        }
+
+        function showPanel() {
+            loginSection.style.display = 'none';
+            controlPanel.style.display = 'flex';
+            sync();
+        }
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pwd = passwordInput.value.trim();
+            if (!pwd) return;
+
+            loginMessage.style.color = '#3498db';
+            loginMessage.textContent = "Vérification...";
+            const ok = await verifyKey(pwd);
+            if (ok) {
+                adminKey = pwd;
+                localStorage.setItem('aminato_admin_key', pwd);
+                showPanel();
+            } else {
+                loginMessage.style.color = 'red';
+                loginMessage.textContent = "Mot de passe incorrect.";
+            }
+        });
+
+        btnLogout.addEventListener('click', () => {
+            localStorage.removeItem('aminato_admin_key');
+            adminKey = "";
+            showLogin();
+        });
+
+        btnCopyGreen.addEventListener('click', () => {
+            const url = window.location.origin + '/obs_presentation.html?bg=green';
+            navigator.clipboard.writeText(url).then(() => {
+                showToast("✓ Lien Fond Vert copié dans le presse-papier !");
+            }).catch(() => {
+                prompt("Lien OBS Fond Vert :", url);
+            });
+        });
+
+        btnCopyTrans.addEventListener('click', () => {
+            const url = window.location.origin + '/obs_presentation.html?bg=transparent';
+            navigator.clipboard.writeText(url).then(() => {
+                showToast("✓ Lien Transparent copié dans le presse-papier !");
+            }).catch(() => {
+                prompt("Lien OBS Transparent :", url);
+            });
+        });
+
+        btnResetAll.addEventListener('click', async () => {
+            if (!confirm("Voulez-vous vraiment décocher toutes les cases de la présentation ?")) return;
+            try {
+                const res = await fetch('/api/presentation/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: adminKey })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    currentTicked = [];
+                    updateCards();
+                    showToast("✓ Toutes les cases ont été décochées !");
+                }
+            } catch (e) {
+                showToast("Erreur de réinitialisation.");
+            }
+        });
+
+        async function toggleTile(phrase, idx) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            try {
+                const res = await fetch('/api/presentation/toggle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: adminKey, phrase: phrase, index: idx })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    currentTicked = data.ticked || [];
+                    updateCards();
+                    const stateTxt = data.action === 'ticked' ? 'validée ✓' : 'décochée';
+                    showToast(`Case #${idx + 1} ${stateTxt}`);
+                } else if (res.status === 401) {
+                    showToast("Session expirée. Reconnexion requise.");
+                    showLogin();
+                } else {
+                    showToast(data.error || "Erreur de validation");
+                }
+            } catch (e) {
+                showToast("Erreur de communication.");
+            } finally {
+                isProcessing = false;
+            }
+        }
+
+        function renderGrid(phrases) {
+            cardsGrid.innerHTML = "";
+            phrases.forEach((phrase, idx) => {
+                const tile = document.createElement('div');
+                tile.className = 'bingo-tile';
+                tile.dataset.phrase = phrase;
+                tile.dataset.index = idx;
+
+                const isTicked = currentTicked.includes(phrase);
+                if (isTicked) tile.classList.add('ticked');
+
+                tile.innerHTML = `
+                    <div class="tile-top">
+                        <span class="tile-number">#${idx + 1}</span>
+                        <span class="tile-badge">${isTicked ? 'VALIDÉ ✓' : 'EN ATTENTE'}</span>
+                    </div>
+                    <div class="tile-text">${escapeHtml(phrase)}</div>
+                `;
+
+                tile.addEventListener('click', () => toggleTile(phrase, idx));
+                cardsGrid.appendChild(tile);
+            });
+        }
+
+        function updateCards() {
+            if (counterEl) counterEl.textContent = `${currentTicked.length} / 16 validées`;
+            const tiles = cardsGrid.querySelectorAll('.bingo-tile');
+            tiles.forEach(tile => {
+                const phrase = tile.dataset.phrase;
+                const isTicked = currentTicked.includes(phrase);
+                const badge = tile.querySelector('.tile-badge');
+
+                if (isTicked) {
+                    tile.classList.add('ticked');
+                    if (badge) badge.textContent = "VALIDÉ ✓";
+                } else {
+                    tile.classList.remove('ticked');
+                    if (badge) badge.textContent = "EN ATTENTE";
+                }
+            });
+        }
+
+        async function sync() {
+            if (!adminKey) return;
+            try {
+                const res = await fetch('/api/presentation/state?t=' + Date.now());
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const phrases = data.phrases || [];
+                const phrasesKey = phrases.join('||');
+
+                if (phrasesKey !== currentPhrasesKey) {
+                    currentPhrasesKey = phrasesKey;
+                    currentTicked = data.ticked || [];
+                    renderGrid(phrases);
+                    updateCards();
+                } else {
+                    currentTicked = data.ticked || [];
+                    updateCards();
+                }
+            } catch (e) {
+                console.error("Erreur sync", e);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        init();
+        setInterval(sync, 1500);
+    </script>
+</body>
+</html>

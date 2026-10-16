@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlay OBS - Bingo Présentation</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: transparent;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            user-select: none;
+        }
+
+        /* Support fond vert optionnel si paramètre ?bg=green */
+        body.bg-green {
+            background: #00ff00 !important;
+        }
+
+        /* Grille 4x4 plein écran 100% scalable dans OBS */
+        .bingo-grid {
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 1.2vmin;
+            padding: 1.2vmin;
+        }
+
+        /* Case du Bingo : fine transparence aérée (pas gris terne) */
+        .bingo-card {
+            position: relative;
+            background: rgba(15, 23, 42, 0.32);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 1.2vmin;
+            padding: 0.8vmin;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Numéro de case discret */
+        .card-number {
+            position: absolute;
+            top: 0.5vmin;
+            left: 0.7vmin;
+            font-size: clamp(8px, 1.1vmin, 13px);
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: ui-monospace, SFMono-Regular, monospace;
+            line-height: 1;
+        }
+
+        /* Texte de la phrase avec typographie fluide scalable */
+        .card-text {
+            font-size: clamp(11px, 2vmin, 24px);
+            font-weight: 800;
+            line-height: 1.25;
+            color: #ffffff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.85);
+            word-break: break-word;
+            padding: 0.4vmin;
+            z-index: 2;
+            transition: all 0.25s ease;
+        }
+
+        /* État VALIDÉ : nuance vert émeraude douce et classe */
+        .bingo-card.ticked {
+            background: rgba(16, 185, 129, 0.22);
+            border: 1.5px solid rgba(52, 211, 153, 0.85);
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(16, 185, 129, 0.15);
+            transform: scale(0.985);
+        }
+
+        .bingo-card.ticked .card-text {
+            color: #f0fdf4;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95), 0 0 10px rgba(34, 197, 94, 0.45);
+        }
+
+        /* Badge VALIDÉ discret en haut à droite (doux, vert émeraude, non agressif) */
+        .stamp-badge {
+            position: absolute;
+            top: 0.6vmin;
+            right: 0.8vmin;
+            background: rgba(16, 185, 129, 0.88);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            padding: 0.2vmin 0.7vmin;
+            border-radius: 2vmin;
+            font-size: clamp(8px, 1.1vmin, 13px);
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.6);
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.3vmin;
+            white-space: nowrap;
+        }
+
+        .bingo-card.ticked .stamp-badge {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* En mode Fond Vert (Chroma Key), cartes opaques pour découpe nette */
+        body.bg-green .bingo-card {
+            background: #111827 !important;
+            border-color: #38bdf8 !important;
+        }
+        body.bg-green .bingo-card.ticked {
+            background: #1e1b4b !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.55) !important;
+        }
+    </style>
+</head>
+<body>
+    <main class="bingo-grid" id="bingo-grid">
+        <!-- 16 cases générées dynamiquement -->
+    </main>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Support optionnel ?bg=green pour le fond vert
+        const bgParam = (urlParams.get('bg') || '').toLowerCase();
+        if (bgParam === 'green' || bgParam === 'greenscreen') {
+            document.body.classList.add('bg-green');
+        }
+
+        const gridEl = document.getElementById('bingo-grid');
+        let currentPhrasesKey = "";
+        let currentTicked = [];
+        let isFirstSync = true;
+        let audioCtx = null;
+
+        // Son doux et agréable de validation (Carillon Web Audio doux)
+        function playSoftValidationChime() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const now = audioCtx.currentTime;
+
+                // Note principale C5 (523Hz) glissant doucement vers E5 (659Hz)
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, now);
+                osc1.frequency.exponentialRampToValueAtTime(659.25, now + 0.08);
+
+                gain1.gain.setValueAtTime(0.001, now);
+                gain1.gain.linearRampToValueAtTime(0.12, now + 0.02); // Volume très doux
+                gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.5);
+
+                // Harmonique d'octave C6 (1046Hz) subtile pour la brillance
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(1046.5, now);
+
+                gain2.gain.setValueAtTime(0.001, now);
+                gain2.gain.linearRampToValueAtTime(0.05, now + 0.03);
+                gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start(now);
+                osc2.stop(now + 0.4);
+            } catch (e) {
+                // Fallback ting.mp3 à très faible volume
+                try {
+                    const sound = new Audio('ting.mp3');
+                    sound.volume = 0.2;
+                    sound.play();
+                } catch (err) {}
+            }
+        }
+
+        function renderGrid(phrases) {
+            gridEl.innerHTML = "";
+            phrases.forEach((phrase, idx) => {
+                const card = document.createElement('div');
+                card.className = 'bingo-card';
+                card.dataset.phrase = phrase;
+                card.dataset.index = idx;
+
+                const isTicked = currentTicked.includes(phrase);
+                if (isTicked) card.classList.add('ticked');
+
+                card.innerHTML = `
+                    <span class="card-number">#${idx + 1}</span>
+                    <span class="card-text">${escapeHtml(phrase)}</span>
+                    <div class="stamp-badge">
+                        <span>✓</span>
+                        <span>Validé</span>
+                    </div>
+                `;
+                gridEl.appendChild(card);
+            });
+        }
+
+        function updateTickedCards(newTickedList) {
+            const previousTicked = currentTicked;
+            currentTicked = newTickedList || [];
+
+            // Détection si de nouvelles cases ont été validées (hors premier chargement)
+            if (!isFirstSync) {
+                const hasNewValidation = currentTicked.some(phrase => !previousTicked.includes(phrase));
+                if (hasNewValidation) {
+                    playSoftValidationChime();
+                }
+            }
+
+            const cards = gridEl.querySelectorAll('.bingo-card');
+            cards.forEach(card => {
+                const phrase = card.dataset.phrase;
+                const shouldBeTicked = currentTicked.includes(phrase);
+                if (shouldBeTicked && !card.classList.contains('ticked')) {
+                    card.classList.add('ticked');
+                } else if (!shouldBeTicked && card.classList.contains('ticked')) {
+                    card.classList.remove('ticked');
+                }
+            });
+        }
+
+        async function syncPresentationState() {
+            try {
+                const res = await fetch('/api/presentation/state?t=' + Date.now());
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const phrases = data.phrases || [];
+                const phrasesKey = phrases.join('||');
+
+                if (phrasesKey !== currentPhrasesKey) {
+                    currentPhrasesKey = phrasesKey;
+                    currentTicked = data.ticked || [];
+                    renderGrid(phrases);
+                } else {
+                    updateTickedCards(data.ticked || []);
+                }
+                isFirstSync = false;
+            } catch (err) {
+                console.error("Erreur sync overlay presentation", err);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Interaction initiale pour débloquer l'audio navigateur
+        window.addEventListener('click', () => {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: true });
+
+        syncPresentationState();
+        setInterval(syncPresentationState, 1000);
+    </script>
+</body>
+</html>

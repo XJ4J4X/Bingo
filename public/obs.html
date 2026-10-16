@@ -169,8 +169,26 @@
         </div>
     </div>
 
+    <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 10px;">
+        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #c084fc; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span>🎬</span>
+            <span>Présentation Live (Derrière Aminato)</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px;">
+            <a id="link-pres-control" href="obs_presentation_control.html" target="_blank" style="display: block; text-align: center; padding: 7px 4px; background: #1e293b; color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 10px;">
+                🎯 Contrôleur
+            </a>
+            <a href="obs_presentation.html?bg=green" target="_blank" style="display: block; text-align: center; padding: 7px 4px; background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 10px;">
+                🟢 Fond Vert
+            </a>
+            <a href="obs_presentation.html?bg=transparent" target="_blank" style="display: block; text-align: center; padding: 7px 4px; background: #1e293b; color: #a855f7; border: 1px solid rgba(168,85,247,0.3); border-radius: 6px; text-decoration: none; font-weight: 700; font-size: 10px;">
+                ✨ Transparent
+            </a>
+        </div>
+    </div>
+
     <div style="text-align: center; margin-top: 14px; font-size: 11px; color: #5a6673;">
-        Fait avec amour par J4X ❤️ - Version 2.4.0
+        Fait avec amour par J4X ❤️ - Version 2.5.0
     </div>
 
     <script>
@@ -179,6 +197,9 @@
 
         if (!adminKey) {
             document.getElementById('auth-alert').style.display = 'block';
+        } else {
+            const presLink = document.getElementById('link-pres-control');
+            if (presLink) presLink.href = 'obs_presentation_control.html?key=' + encodeURIComponent(adminKey);
         }
 
         function formatTime(seconds) {

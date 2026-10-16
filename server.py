@@ -69,6 +69,7 @@ game_state = {
     "verification_mode": "strict",
     "active_phrases": [],
     "admin_ticked": [],
+    "presentation_ticked": [],
     "color_choice_user_pseudo": None,
     "rules_enabled": False,
     "submissions_count": 0,
@@ -223,6 +224,22 @@ def check_admin(headers):
     if admin:
         return {'id': admin[0], 'role': admin[1]}
     return None
+
+def get_current_presentation_phrases():
+    active = game_state.get("active_phrases")
+    if active and len(active) >= 16:
+        return active[:16]
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('SELECT phrase FROM phrases LIMIT 16')
+        rows = [r[0] for r in c.fetchall()]
+        conn.close()
+        if len(rows) >= 16:
+            return rows[:16]
+    except Exception:
+        pass
+    return DEFAULT_PHRASES[:16]
 
 def get_eff_streak_checker(c):
     is_active = game_state.get('is_active', False) and not game_state.get('is_test', False)
@@ -405,6 +422,30 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         if url_path in ('/validations', '/validations/', '/validations.html', '/dock', '/dock/'):
             try:
                 with open('public/validations.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception:
+                self.send_error(404, "File not found")
+            return
+
+        if url_path in ('/obs_presentation', '/obs_presentation/', '/obs_presentation.html', '/presentation', '/presentation/'):
+            try:
+                with open('public/obs_presentation.html', 'rb') as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception:
+                self.send_error(404, "File not found")
+            return
+
+        if url_path in ('/obs_presentation_control', '/obs_presentation_control/', '/obs_presentation_control.html', '/presentation_control', '/presentation_control/', '/control', '/control/'):
+            try:
+                with open('public/obs_presentation_control.html', 'rb') as f:
                     content = f.read()
                 self.send_response(200)
                 self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -731,6 +772,19 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({
                 'active_phrases': game_state["active_phrases"],
                 'admin_ticked': game_state["admin_ticked"]
+            }).encode('utf-8'))
+
+        elif url_path == '/api/presentation/state':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            phrases = get_current_presentation_phrases()
+            self.wfile.write(json.dumps({
+                'is_active': game_state.get('is_active', False),
+                'is_test': bool(game_state.get('is_test', False)),
+                'phrases': phrases,
+                'ticked': list(game_state.get('presentation_ticked', []))
             }).encode('utf-8'))
             
         elif url_path == '/ping':
@@ -1195,6 +1249,103 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({'success': True}).encode())
 
+        elif url_path == '/api/presentation/toggle':
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            key = params.get('key', [None])[0] or data.get('key') or data.get('password')
+            
+            admin_auth = False
+            if key:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id FROM admins WHERE password = ?', (key,))
+                if c.fetchone():
+                    admin_auth = True
+                conn.close()
+            elif check_admin(self.headers):
+                admin_auth = True
+                
+            if not admin_auth:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Mot de passe incorrect ou non autorisé'}).encode('utf-8'))
+                return
+                
+            phrase = data.get('phrase')
+            index = data.get('index')
+            phrases = get_current_presentation_phrases()
+            
+            target_phrase = None
+            if phrase:
+                target_phrase = str(phrase).strip()
+            elif index is not None:
+                try:
+                    idx = int(index)
+                    if 0 <= idx < len(phrases):
+                        target_phrase = phrases[idx]
+                except (ValueError, TypeError):
+                    pass
+                    
+            if not target_phrase:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Phrase ou index invalide'}).encode('utf-8'))
+                return
+                
+            if "presentation_ticked" not in game_state:
+                game_state["presentation_ticked"] = []
+                
+            if target_phrase in game_state["presentation_ticked"]:
+                game_state["presentation_ticked"].remove(target_phrase)
+                action = "unticked"
+            else:
+                game_state["presentation_ticked"].append(target_phrase)
+                action = "ticked"
+                
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'success': True,
+                'action': action,
+                'phrase': target_phrase,
+                'ticked': list(game_state["presentation_ticked"])
+            }).encode('utf-8'))
+
+        elif url_path == '/api/presentation/reset':
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            key = params.get('key', [None])[0] or data.get('key') or data.get('password')
+            
+            admin_auth = False
+            if key:
+                conn = get_db_connection()
+                c = conn.cursor()
+                c.execute('SELECT id FROM admins WHERE password = ?', (key,))
+                if c.fetchone():
+                    admin_auth = True
+                conn.close()
+            elif check_admin(self.headers):
+                admin_auth = True
+                
+            if not admin_auth:
+                self.send_response(401)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Mot de passe incorrect ou non autorisé'}).encode('utf-8'))
+                return
+                
+            game_state["presentation_ticked"] = []
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                'success': True,
+                'ticked': []
+            }).encode('utf-8'))
+
         elif url_path.startswith('/api/admin/'):
             admin_data = check_admin(self.headers)
             if not admin_data:
@@ -1214,6 +1365,7 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 game_state["lock_start_time"] = None
                 game_state["verification_mode"] = data.get("verification_mode", "strict")
                 game_state["admin_ticked"] = []
+                game_state["presentation_ticked"] = []
                 
                 profile_id = data.get("profile_id")
                 conn = get_db_connection()
