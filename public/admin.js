@@ -643,10 +643,10 @@ async function loadPhrases() {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #eee';
             tr.innerHTML = `
-                <td style="padding: 10px; color: #7f8c8d;">#${p.id}</td>
-                <td style="padding: 10px; font-weight: 500;">${p.phrase}</td>
+                <td style="padding: 10px;">${p.id}</td>
+                <td style="padding: 10px;">${p.phrase}</td>
                 <td style="padding: 10px; text-align: center;">
-                    <button class="small-btn delete-phrase-btn danger-btn" data-id="${p.id}">🗑️ Supprimer</button>
+                    <button class="small-btn delete-phrase-btn danger-btn" data-id="${p.id}">Supprimer</button>
                 </td>
             `;
             phrasesTableBody.appendChild(tr);
@@ -773,8 +773,8 @@ async function loadProfiles() {
         const prevVal = select ? select.value : 'random';
         if (select) {
             select.innerHTML = `
-                <option value="random">🎲 Générer aléatoirement (Banque de phrases)</option>
-                <option value="custom">✏️ Personnalisé (Coller 16 phrases pour ce live)</option>
+                <option value="random">Aléatoire (BDD)</option>
+                <option value="custom">Personnalisé (Coller une liste)</option>
             `;
         }
         
@@ -785,7 +785,7 @@ async function loadProfiles() {
             if (select) {
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.textContent = `📋 Profil : ${p.name}`;
+                opt.textContent = p.name;
                 select.appendChild(opt);
             }
             
@@ -793,11 +793,11 @@ async function loadProfiles() {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #eee';
                 tr.innerHTML = `
-                    <td style="padding: 10px; color: #7f8c8d;">#${p.id}</td>
+                    <td style="padding: 10px;">${p.id}</td>
                     <td style="padding: 10px;"><strong>${p.name}</strong></td>
                     <td style="padding: 10px; text-align: center; white-space: nowrap;">
-                        <button class="small-btn edit-profile-btn" data-id="${p.id}" style="background-color: #f39c12; color: white;">✏️ Éditer</button>
-                        <button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">🗑️ Supprimer</button>
+                        <button class="small-btn edit-profile-btn" data-id="${p.id}" style="background-color: #f39c12; color: white;">Éditer</button>
+                        <button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">Supprimer</button>
                     </td>
                 `;
                 tbody.appendChild(tr);

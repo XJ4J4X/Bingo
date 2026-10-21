@@ -33,6 +33,9 @@
                 <div class="admin-nav-item" data-target="profiles">📋 Profils & Phrases</div>
                 <div class="admin-nav-item" data-target="stats">📈 Statistiques</div>
                 <div class="admin-nav-item" data-target="settings">⚙️ Paramètres</div>
+                <a href="roue.html" target="_blank" class="admin-nav-item" style="text-decoration: none; color: #3498db; display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                    <span>🎡</span> <span>Roue de la Fortune</span> ↗
+                </a>
                 <a href="obs_presentation_control.html" target="_blank" class="admin-nav-item" style="text-decoration: none; color: #a855f7; display: flex; align-items: center; gap: 6px; font-weight: 700;">
                     <span>🎬</span> <span>Présentation Live</span> ↗
                 </a>
@@ -95,13 +98,12 @@
                     <div style="margin-top: 30px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
                         <label for="profile-select"><strong>Profil du jeu :</strong></label>
                         <select id="profile-select" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="random">🎲 Générer aléatoirement (Banque de phrases)</option>
-                            <option value="custom">✏️ Personnalisé (Coller 16 phrases pour ce live)</option>
+                            <option value="random">Générer aléatoirement</option>
+                            <option value="custom">Personnalisé (Coller une liste)</option>
                         </select>
                         <p style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Sélectionnez le lot de 16 phrases à utiliser pour ce live.</p>
                         <div id="custom-phrases-group" class="hidden" style="margin-top: 10px;">
-                            <label for="custom-phrases-input"><strong>Phrases personnalisées pour ce live (1 par ligne, min 16) :</strong></label>
-                            <textarea id="custom-phrases-input" rows="6" placeholder="Collez ici vos 16 phrases (une par ligne)..." style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box;"></textarea>
+                            <textarea id="custom-phrases-input" rows="6" placeholder="Collez vos 16 phrases (une par ligne)..." style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box;"></textarea>
                         </div>
                     </div>
 
@@ -213,32 +215,26 @@
                 </div>
             </section>
 
-            <!-- SECTION PROFILS & PHRASES -->
+            <!-- SECTION PROFILS -->
             <section id="profiles" class="admin-section">
                 <div class="admin-header">
-                    <h1>Profils & Banque de Phrases</h1>
+                    <h1>Profils de Jeu</h1>
                 </div>
 
-                <!-- CARTE 1 : BANQUE DE PHRASES (MODE ALÉATOIRE) -->
                 <div class="admin-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                        <h3 style="margin: 0; border: none; padding: 0;">🎲 Banque de Phrases du Bingo (Mode Aléatoire)</h3>
-                        <span id="phrases-count-badge" style="background: #3498db; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.85rem;">0 phrases</span>
-                    </div>
-                    <p style="color: #7f8c8d; margin-bottom: 15px;">Ajoutez ou supprimez des phrases dans la banque globale. Lorsqu'un Bingo est lancé en mode <strong>Aléatoire</strong>, 16 phrases sont tirées au sort parmi cette liste.</p>
-                    
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                        <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase (ex: Aminato boit de l'eau)..." style="flex: 1; min-width: 240px; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px;">
-                        <button id="add-phrase-btn" class="btn success-btn" style="padding: 10px 20px; font-weight: bold;">➕ Ajouter la phrase</button>
+                    <h3>Gestion des Phrases Bingo</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                        <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase..." style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <button id="add-phrase-btn" class="btn success-btn">Ajouter phrase</button>
                     </div>
 
-                    <div style="max-height: 360px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px;">
-                        <table style="width: 100%; text-align: left; border-collapse: collapse; margin: 0;">
+                    <div style="max-height: 350px; overflow-y: auto;">
+                        <table style="width: 100%; text-align: left; border-collapse: collapse;">
                             <thead>
-                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; z-index: 1;">
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
                                     <th style="padding: 10px; width: 60px;">ID</th>
                                     <th style="padding: 10px;">Phrase</th>
-                                    <th style="padding: 10px; width: 120px; text-align: center;">Action</th>
+                                    <th style="padding: 10px; width: 100px; text-align: center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="phrases-table-body">
@@ -247,9 +243,8 @@
                     </div>
                 </div>
 
-                <!-- CARTE 2 : PROFILS PRÉDÉFINIS -->
                 <div class="admin-card">
-                    <h3>📋 Gérer les Profils de Jeu</h3>
+                    <h3>Gérer les Profils</h3>
                     <p style="color: #7f8c8d; margin-bottom: 20px;">Un profil contient 16 phrases prédéfinies pour un thème ou un jeu spécifique.</p>
                     
                     <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
@@ -389,7 +384,7 @@
 
 
     <div style="text-align: center; padding: 20px; font-size: 0.9em; color: #7f8c8d; margin-top: 40px; border-top: 1px solid rgba(0,0,0,0.1);">
-        Fait avec amour par J4X ❤️ - Version 2.6.0
+        Fait avec amour par J4X ❤️ - Version 2.6.1
     </div>
         </main>
     </div>
@@ -409,6 +404,6 @@
         </div>
     </div>
 
-    <script src="admin.js?v=5600"></script>
+    <script src="admin.js?v=5601"></script>
 </body>
 </html>
