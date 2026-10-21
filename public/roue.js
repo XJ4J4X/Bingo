@@ -37,11 +37,7 @@ function init() {
     
     btnUpdate.addEventListener('click', () => {
         localStorage.setItem('bingo_wheel_phrases', inputPhrases.value);
-        parsePhrases();
-        drawWheel();
-        currentRotation = 0;
-        canvas.style.transition = 'none';
-        canvas.style.transform = `rotate(0deg)`;
+        updateWheel();
     });
     
     btnSpin.addEventListener('click', spinWheel);
@@ -79,6 +75,14 @@ function parsePhrases() {
     if (phrases.length === 0) {
         phrases = ["Ajoutez", "des", "phrases"];
     }
+}
+
+function updateWheel() {
+    parsePhrases();
+    drawWheel();
+    currentRotation = 0;
+    canvas.style.transition = 'none';
+    canvas.style.transform = `rotate(0deg)`;
 }
 
 function drawWheel() {

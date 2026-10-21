@@ -347,6 +347,9 @@ saveColorBtn.addEventListener('click', async () => {
             })
         });
         if (res.ok) {
+            window.currentUserColor = color;
+            localStorage.setItem('bingo_color', color);
+            updateHeaderPseudo();
             alert("Couleur sauvegardée avec succès !");
             colorPickerSection.classList.add('hidden');
             loadLeaderboard();

@@ -79,7 +79,7 @@ function logoutAdmin() {
     localStorage.removeItem('adminRole');
     loginSection.style.display = 'block';
     adminContent.style.display = 'none';
-    adminInfo.classList.add('hidden');
+    if (adminInfo) adminInfo.classList.add('hidden');
     adminPasswordInput.value = '';
     clearInterval(stateInterval);
 }
@@ -338,17 +338,21 @@ async function loadLiveData() {
         if (!res.ok) return;
         const data = await res.json();
         
-        const grid = (document.getElementById('admin-live-grid')||{});
+        const grid = document.getElementById('admin-live-grid');
+        if (!grid) return;
+
+        const activePhrases = data.active_phrases || [];
+        const phrasesKey = JSON.stringify(activePhrases);
         
-        // If empty, create the grid cells
-        if (grid.children.length === 0) {
-            data.active_phrases.forEach(phrase => {
+        // Rebuild grid if empty or if active phrases changed
+        if (grid.children.length === 0 || grid.dataset.phrasesKey !== phrasesKey) {
+            grid.innerHTML = '';
+            grid.dataset.phrasesKey = phrasesKey;
+            activePhrases.forEach(phrase => {
                 const cell = document.createElement('div');
                 cell.className = 'bingo-cell';
                 cell.id = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
-                
-                const highlighted = phrase;
-                cell.innerHTML = highlighted;
+                cell.textContent = phrase;
                 
                 cell.addEventListener('click', () => {
                     const newlyChecked = !cell.classList.contains('checked');
@@ -361,8 +365,9 @@ async function loadLiveData() {
         }
         
         // Update their checked status without overwriting the DOM
-        data.active_phrases.forEach(phrase => {
-            const isChecked = data.admin_ticked.includes(phrase);
+        const tickedList = data.admin_ticked || [];
+        activePhrases.forEach(phrase => {
+            const isChecked = tickedList.includes(phrase);
             const chkId = 'chk-' + btoa(unescape(encodeURIComponent(phrase))).replace(/=/g, '');
             const cell = document.getElementById(chkId);
             if (cell) {
@@ -384,6 +389,19 @@ window.toggleTick = async function(phrase, isChecked) {
     });
 };
 
+const profileSelectEl = document.getElementById('profile-select');
+const customPhrasesGroupEl = document.getElementById('custom-phrases-group');
+const customPhrasesInputEl = document.getElementById('custom-phrases-input');
+
+if (profileSelectEl && customPhrasesGroupEl) {
+    profileSelectEl.addEventListener('change', () => {
+        if (profileSelectEl.value === 'custom') {
+            customPhrasesGroupEl.classList.remove('hidden');
+        } else {
+            customPhrasesGroupEl.classList.add('hidden');
+        }
+    });
+}
 
 if(startGameBtn) startGameBtn.addEventListener('click', async () => {
     const durationMins = parseInt(timerDurationInput.value, 10) || 10;
@@ -397,6 +415,16 @@ if(startGameBtn) startGameBtn.addEventListener('click', async () => {
     const verificationMode = document.getElementById('verification-mode').value;
     const testModeToggle = document.getElementById('test-mode-toggle');
     const isTest = testModeToggle ? testModeToggle.checked : false;
+
+    let customPhrases = [];
+    if (profileId === 'custom') {
+        const rawText = customPhrasesInputEl ? customPhrasesInputEl.value : '';
+        customPhrases = rawText.split(/\r?\n/).map(p => p.trim()).filter(p => p.length > 0);
+        if (customPhrases.length < 16) {
+            alert(`⚠️ Vous avez entré ${customPhrases.length} phrase(s). Il faut au moins 16 phrases (une par ligne) pour lancer un Bingo personnalisé.`);
+            return;
+        }
+    }
     
     await fetchWithAuth('/api/admin/game/start', {
         method: 'POST',
@@ -405,6 +433,7 @@ if(startGameBtn) startGameBtn.addEventListener('click', async () => {
             duration: durationSecs, 
             lock_duration: lockDurationSecs,
             profile_id: profileId, 
+            custom_phrases: customPhrases,
             verification_mode: verificationMode,
             is_test: isTest
         })
@@ -518,9 +547,9 @@ async function loadUsers() {
         });
         
         document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', async () => {
                 if (confirm('Vraiment supprimer ce joueur ?')) {
-                    const id = e.target.getAttribute('data-id');
+                    const id = btn.getAttribute('data-id');
                     await fetchWithAuth('/api/admin/users/delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -532,9 +561,9 @@ async function loadUsers() {
         });
         
         document.querySelectorAll('.grant-color-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', async () => {
                 if (confirm("Voulez-vous donner l'accès à la roue de couleur à ce joueur ?")) {
-                    const id = e.target.getAttribute('data-id');
+                    const id = btn.getAttribute('data-id');
                     const res = await fetchWithAuth('/api/admin/game/grant_color', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -546,8 +575,8 @@ async function loadUsers() {
             });
         });
         document.querySelectorAll('.add-pts-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = e.target.getAttribute('data-id');
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
                 await fetchWithAuth('/api/admin/users/points', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -558,8 +587,8 @@ async function loadUsers() {
         });
         
         document.querySelectorAll('.sub-pts-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = e.target.getAttribute('data-id');
+            btn.addEventListener('click', async () => {
+                const id = btn.getAttribute('data-id');
                 await fetchWithAuth('/api/admin/users/points', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -599,24 +628,34 @@ if(createUserBtn) createUserBtn.addEventListener('click', async () => {
 
 async function loadPhrases() {
     try {
-        const res = await fetch('/api/phrases');
+        const res = await fetch('/api/phrases?db=1&t=' + Date.now());
+        if (!res.ok) return;
         const phrases = await res.json();
         
+        const countBadge = document.getElementById('phrases-count-badge');
+        if (countBadge) {
+            countBadge.textContent = `${phrases.length} phrase${phrases.length > 1 ? 's' : ''}`;
+        }
+
+        if (!phrasesTableBody) return;
         phrasesTableBody.innerHTML = '';
         phrases.forEach(p => {
             const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #eee';
             tr.innerHTML = `
-                <td>${p.id}</td>
-                <td>${p.phrase}</td>
-                <td><button class="small-btn delete-phrase-btn danger-btn" data-id="${p.id}">Supprimer</button></td>
+                <td style="padding: 10px; color: #7f8c8d;">#${p.id}</td>
+                <td style="padding: 10px; font-weight: 500;">${p.phrase}</td>
+                <td style="padding: 10px; text-align: center;">
+                    <button class="small-btn delete-phrase-btn danger-btn" data-id="${p.id}">🗑️ Supprimer</button>
+                </td>
             `;
             phrasesTableBody.appendChild(tr);
         });
         
         document.querySelectorAll('.delete-phrase-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                if (confirm('Vraiment supprimer cette phrase ?')) {
-                    const id = e.target.getAttribute('data-id');
+            btn.addEventListener('click', async () => {
+                if (confirm('Vraiment supprimer cette phrase de la banque ?')) {
+                    const id = btn.getAttribute('data-id');
                     await fetchWithAuth('/api/admin/phrases/delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -629,18 +668,38 @@ async function loadPhrases() {
     } catch (e) { console.error(e); }
 }
 
-if(addPhraseBtn) addPhraseBtn.addEventListener('click', async () => {
+async function handleAddPhrase() {
+    if (!newPhraseInput) return;
     const phrase = newPhraseInput.value.trim();
-    if (phrase) {
-        await fetchWithAuth('/api/admin/phrases/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phrase })
-        });
+    if (!phrase) {
+        alert("Veuillez écrire une phrase à ajouter.");
+        return;
+    }
+    const res = await fetchWithAuth('/api/admin/phrases/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phrase })
+    });
+    if (res.ok) {
         newPhraseInput.value = '';
         loadPhrases();
+    } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || "Cette phrase existe déjà dans la banque.");
     }
-});
+}
+
+if (addPhraseBtn) {
+    addPhraseBtn.addEventListener('click', handleAddPhrase);
+}
+if (newPhraseInput) {
+    newPhraseInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddPhrase();
+        }
+    });
+}
 
 if(createAdminBtn) createAdminBtn.addEventListener('click', async () => {
     const newPwd = newAdminPasswordInput.value.trim();
@@ -687,9 +746,9 @@ async function loadAdmins() {
         });
         
         document.querySelectorAll('.delete-admin-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', async () => {
                 if (confirm('Vraiment supprimer cet administrateur ?')) {
-                    const id = e.target.getAttribute('data-id');
+                    const id = btn.getAttribute('data-id');
                     await fetchWithAuth('/api/admin/delete_admin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -711,29 +770,47 @@ async function loadProfiles() {
         const profiles = await res.json();
         
         const select = document.getElementById('profile-select');
-        select.innerHTML = '<option value="random">Aléatoire (BDD)</option>';
+        const prevVal = select ? select.value : 'random';
+        if (select) {
+            select.innerHTML = `
+                <option value="random">🎲 Générer aléatoirement (Banque de phrases)</option>
+                <option value="custom">✏️ Personnalisé (Coller 16 phrases pour ce live)</option>
+            `;
+        }
         
         const tbody = document.getElementById('profiles-table-body');
-        tbody.innerHTML = '';
+        if (tbody) tbody.innerHTML = '';
         
         profiles.forEach(p => {
-            select.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+            if (select) {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `📋 Profil : ${p.name}`;
+                select.appendChild(opt);
+            }
             
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${p.id}</td>
-                <td><strong>${p.name}</strong></td>
-                <td>
-                    <button class="small-btn edit-profile-btn" data-id="${p.id}" style="background-color: #f39c12; color: white;">Éditer</button>
-                    <button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">Supprimer</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
+            if (tbody) {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #eee';
+                tr.innerHTML = `
+                    <td style="padding: 10px; color: #7f8c8d;">#${p.id}</td>
+                    <td style="padding: 10px;"><strong>${p.name}</strong></td>
+                    <td style="padding: 10px; text-align: center; white-space: nowrap;">
+                        <button class="small-btn edit-profile-btn" data-id="${p.id}" style="background-color: #f39c12; color: white;">✏️ Éditer</button>
+                        <button class="small-btn danger-btn delete-profile-btn" data-id="${p.id}">🗑️ Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
         });
+
+        if (select && Array.from(select.options).some(o => o.value === String(prevVal))) {
+            select.value = prevVal;
+        }
         
         document.querySelectorAll('.edit-profile-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const id = e.target.getAttribute('data-id');
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-id');
                 const profile = profiles.find(pr => pr.id == id);
                 if (profile) {
                     editingProfileId = id;
@@ -751,9 +828,9 @@ async function loadProfiles() {
         });
 
         document.querySelectorAll('.delete-profile-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', async () => {
                 if (confirm('Supprimer ce profil ?')) {
-                    const id = e.target.getAttribute('data-id');
+                    const id = btn.getAttribute('data-id');
                     await fetchWithAuth('/api/admin/profiles/delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -865,6 +942,7 @@ if (csvUpload) {
                 
                 if (cols.length > 1) {
                     const name = cols[0];
+                    if (name.toLowerCase() === 'nom du profil') continue;
                     const phrases = cols.slice(1).filter(p => p.length > 0);
                     if (name && phrases.length > 0) {
                         pendingBulkProfiles.push({ name: name, phrases: phrases });
@@ -1168,17 +1246,20 @@ document.getElementById('reset-rules-btn')?.addEventListener('click', async () =
 // Gestion de la navigation latérale (Dashboard)
 document.querySelectorAll('.admin-nav-item').forEach(item => {
     item.addEventListener('click', () => {
-        document.querySelectorAll('.admin-nav-item').forEach(nav => nav.classList.remove('active'));
+        const target = item.getAttribute('data-target');
+        if (!target) return; // Ignore external links like obs_presentation_control.html
+
+        document.querySelectorAll('.admin-nav-item[data-target]').forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
         
         document.querySelectorAll('.admin-section').forEach(sec => sec.classList.remove('active'));
-        const target = item.getAttribute('data-target');
         const targetEl = document.getElementById(target);
         if(targetEl) targetEl.classList.add('active');
         
         if(target === 'users') {
             loadUsers();
         } else if(target === 'profiles') {
+            loadPhrases();
             loadProfiles();
         } else if(target === 'stats') {
             loadStats();
@@ -1190,9 +1271,9 @@ document.querySelectorAll('.admin-nav-item').forEach(item => {
 
 async function updateUserFont(userId, font_family) {
     try {
-        const res = await fetch('/api/admin/user/font', {
+        const res = await fetchWithAuth('/api/admin/user/font', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': adminToken },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: userId, font_family: font_family })
         });
         if (!res.ok) {
@@ -1256,9 +1337,8 @@ document.getElementById('upload-font-btn')?.addEventListener('click', async () =
     status.style.color = 'orange';
     
     try {
-        const res = await fetch('/api/admin/fonts/upload', {
+        const res = await fetchWithAuth('/api/admin/fonts/upload', {
             method: 'POST',
-            headers: { 'Authorization': adminToken },
             body: formData
         });
         

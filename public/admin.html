@@ -19,13 +19,7 @@
 
     
     <div id="admin-content" class="admin-layout hidden">
-        <!-- Elements cachés pour compatibilité admin.js -->
-        <div style="display:none;">
-            <div id="admin-info"></div>
-                                    <button id="add-phrase-btn"></button>
-            <input id="new-phrase-input">
-            <table id="phrases-table-body"></table>
-        </div>
+        <div id="admin-info" class="hidden" style="display:none;"></div>
         <aside class="admin-sidebar">
             <h2>
                 <img src="favicon.png?v=800" alt="Logo" style="height:35px;width:35px;border-radius:50%;">
@@ -36,7 +30,7 @@
             <div class="admin-nav">
                 <div class="admin-nav-item active" data-target="dashboard">🎮 Tableau de Bord</div>
                 <div class="admin-nav-item" data-target="users">👥 Joueurs & VIP</div>
-                <div class="admin-nav-item" data-target="profiles">📋 Profils de Jeu</div>
+                <div class="admin-nav-item" data-target="profiles">📋 Profils & Phrases</div>
                 <div class="admin-nav-item" data-target="stats">📈 Statistiques</div>
                 <div class="admin-nav-item" data-target="settings">⚙️ Paramètres</div>
                 <a href="obs_presentation_control.html" target="_blank" class="admin-nav-item" style="text-decoration: none; color: #a855f7; display: flex; align-items: center; gap: 6px; font-weight: 700;">
@@ -101,9 +95,14 @@
                     <div style="margin-top: 30px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
                         <label for="profile-select"><strong>Profil du jeu :</strong></label>
                         <select id="profile-select" style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px;">
-                            <option value="random">Générer aléatoirement</option>
+                            <option value="random">🎲 Générer aléatoirement (Banque de phrases)</option>
+                            <option value="custom">✏️ Personnalisé (Coller 16 phrases pour ce live)</option>
                         </select>
                         <p style="font-size: 0.85em; color: #95a5a6; margin-top: 5px;">Sélectionnez le lot de 16 phrases à utiliser pour ce live.</p>
+                        <div id="custom-phrases-group" class="hidden" style="margin-top: 10px;">
+                            <label for="custom-phrases-input"><strong>Phrases personnalisées pour ce live (1 par ligne, min 16) :</strong></label>
+                            <textarea id="custom-phrases-input" rows="6" placeholder="Collez ici vos 16 phrases (une par ligne)..." style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box;"></textarea>
+                        </div>
                     </div>
 
                     <div style="margin-top: 20px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto;">
@@ -118,7 +117,7 @@
                 <div id="live-control-section" class="admin-card hidden">
                     <h3>Validation Stricte en cours</h3>
                     <p>Cochez les phrases qui ont été réellement dites pendant le live :</p>
-                    <div id="admin-live-grid" class="bingo-grid" style="pointer-events: auto;">
+                    <div id="admin-live-grid" class="grid" style="pointer-events: auto;">
                         <!-- Grille pour validation admin -->
                     </div>
 
@@ -214,18 +213,47 @@
                 </div>
             </section>
 
-            <!-- SECTION PROFILS -->
+            <!-- SECTION PROFILS & PHRASES -->
             <section id="profiles" class="admin-section">
                 <div class="admin-header">
-                    <h1>Profils de Jeu</h1>
+                    <h1>Profils & Banque de Phrases</h1>
                 </div>
 
+                <!-- CARTE 1 : BANQUE DE PHRASES (MODE ALÉATOIRE) -->
                 <div class="admin-card">
-                    <h3>Gérer les Profils</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        <h3 style="margin: 0; border: none; padding: 0;">🎲 Banque de Phrases du Bingo (Mode Aléatoire)</h3>
+                        <span id="phrases-count-badge" style="background: #3498db; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.85rem;">0 phrases</span>
+                    </div>
+                    <p style="color: #7f8c8d; margin-bottom: 15px;">Ajoutez ou supprimez des phrases dans la banque globale. Lorsqu'un Bingo est lancé en mode <strong>Aléatoire</strong>, 16 phrases sont tirées au sort parmi cette liste.</p>
+                    
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <input type="text" id="new-phrase-input" placeholder="Nouvelle phrase (ex: Aminato boit de l'eau)..." style="flex: 1; min-width: 240px; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px;">
+                        <button id="add-phrase-btn" class="btn success-btn" style="padding: 10px 20px; font-weight: bold;">➕ Ajouter la phrase</button>
+                    </div>
+
+                    <div style="max-height: 360px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px;">
+                        <table style="width: 100%; text-align: left; border-collapse: collapse; margin: 0;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6; position: sticky; top: 0; z-index: 1;">
+                                    <th style="padding: 10px; width: 60px;">ID</th>
+                                    <th style="padding: 10px;">Phrase</th>
+                                    <th style="padding: 10px; width: 120px; text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phrases-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CARTE 2 : PROFILS PRÉDÉFINIS -->
+                <div class="admin-card">
+                    <h3>📋 Gérer les Profils de Jeu</h3>
                     <p style="color: #7f8c8d; margin-bottom: 20px;">Un profil contient 16 phrases prédéfinies pour un thème ou un jeu spécifique.</p>
                     
-                    <div style="display: flex; gap: 20px; align-items: flex-start;">
-                        <div style="flex: 1; display:flex; flex-direction:column; gap:10px;">
+                    <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 280px; display:flex; flex-direction:column; gap:10px;">
                             <input type="text" id="new-profile-name" placeholder="Nom du profil (ex: Épisode 4)" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
                             <textarea id="new-profile-phrases" placeholder="Collez ici les 16 phrases (une par ligne)..." rows="8" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; resize: vertical;"></textarea>
                             <div style="display: flex; gap: 10px;">
@@ -234,7 +262,7 @@
                             </div>
                         </div>
 
-                        <div style="flex: 1; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px dashed #ccc; text-align: center;">
+                        <div style="flex: 1; min-width: 260px; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px dashed #ccc; text-align: center;">
                             <h4 style="margin-top: 0; color: #2c3e50;">Importation de masse</h4>
                             <p style="font-size: 0.9em; color: #666;">Importez plusieurs profils d'un coup via un fichier CSV.</p>
                             <input type="file" id="csv-upload" accept=".csv" style="display: none;">
@@ -246,8 +274,9 @@
                     <table style="width: 100%; text-align: left; border-collapse: collapse; margin-top: 30px;">
                         <thead>
                             <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 10px; width: 60px;">ID</th>
                                 <th style="padding: 10px;">Nom du Profil</th>
-                                <th style="padding: 10px; width: 100px; text-align: center;">Action</th>
+                                <th style="padding: 10px; width: 180px; text-align: center;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="profiles-table-body">
@@ -346,9 +375,10 @@
                     <table style="width: 100%; text-align: left; border-collapse: collapse;">
                         <thead>
                             <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 10px; width: 60px;">ID</th>
                                 <th style="padding: 10px;">Mot de passe</th>
                                 <th style="padding: 10px;">Rôle</th>
-                                <th style="padding: 10px; width: 100px;">Action</th>
+                                <th style="padding: 10px; width: 120px;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="admins-table-body">

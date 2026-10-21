@@ -577,16 +577,20 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps({'fonts': fonts}).encode('utf-8'))
             
         elif url_path == '/api/phrases':
+            parsed_q = urllib.parse.urlparse(self.path)
+            q_params = urllib.parse.parse_qs(parsed_q.query)
+            force_db = q_params.get('db', ['0'])[0] == '1'
+
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             
-            if game_state["is_active"] and game_state["active_phrases"]:
+            if not force_db and game_state["is_active"] and game_state["active_phrases"]:
                 phrases_to_send = [{'id': i, 'phrase': p} for i, p in enumerate(game_state["active_phrases"])]
             else:
                 conn = get_db_connection()
                 c = conn.cursor()
-                c.execute('SELECT id, phrase FROM phrases')
+                c.execute('SELECT id, phrase FROM phrases ORDER BY id ASC')
                 phrases_to_send = [{'id': row[0], 'phrase': row[1]} for row in c.fetchall()]
                 conn.close()
                 
@@ -758,13 +762,31 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
         elif url_path == '/api/admin/profiles':
             conn = get_db_connection()
             c = conn.cursor()
-            c.execute('SELECT id, name, phrases_text FROM profiles')
+            c.execute('SELECT id, name, phrases_text FROM profiles ORDER BY id ASC')
             profiles = [{'id': row[0], 'name': row[1], 'phrases': row[2]} for row in c.fetchall()]
             conn.close()
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(profiles).encode('utf-8'))
+
+        elif url_path == '/api/admin/list_admins':
+            admin_data = check_admin(self.headers)
+            if not admin_data or admin_data['role'] != 'superadmin':
+                self.send_response(403)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Forbidden'}).encode('utf-8'))
+                return
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute('SELECT id, password, role FROM admins ORDER BY id ASC')
+            admins_list = [{'id': row[0], 'password': row[1], 'role': row[2]} for row in c.fetchall()]
+            conn.close()
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(admins_list).encode('utf-8'))
             
         elif url_path == '/api/admin/game/live_data':
             self.send_response(200)
@@ -1244,10 +1266,13 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             conn.commit()
             conn.close()
             
-            # Remove the right once used
+            # Remove the right once used & invalidate caches
             game_state['color_choice_user_pseudo'] = None
+            _leaderboard_cache["data"] = None
+            _users_all_cache["data"] = None
             
             self.send_response(200)
+            self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'success': True}).encode())
 
@@ -1424,8 +1449,15 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
 
                 conn.commit()
                 
-                if profile_id and str(profile_id) != "random":
-                    c.execute('SELECT phrases_text FROM profiles WHERE id = ?', (profile_id,))
+                custom_phrases_raw = data.get("custom_phrases", "")
+                if str(profile_id) == "custom" and custom_phrases_raw:
+                    if isinstance(custom_phrases_raw, list):
+                        phrases = [str(p).strip() for p in custom_phrases_raw if str(p).strip()]
+                    else:
+                        phrases = [p.strip() for p in str(custom_phrases_raw).split('\n') if p.strip()]
+                    game_state["active_phrases"] = phrases[:16]
+                elif profile_id and str(profile_id) not in ("random", "custom"):
+                    c.execute('SELECT phrases_text FROM profiles WHERE id = ?', (int(profile_id),))
                     row = c.fetchone()
                     if row:
                         phrases = [p.strip() for p in row[0].split('\n') if p.strip()]
@@ -1471,46 +1503,52 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps(res).encode('utf-8'))
                 
             elif url_path == '/api/admin/users/delete':
-                user_id = data.get('id')
+                user_id = int(data.get('id'))
                 conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('DELETE FROM users WHERE id = ?', (user_id,))
                 conn.commit()
                 conn.close()
+                _leaderboard_cache["data"] = None
+                _users_all_cache["data"] = None
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
-
 
             elif url_path == '/api/admin/game/grant_color':
                 user_id = data.get('user_id')
                 if user_id:
                     conn = get_db_connection()
                     c = conn.cursor()
-                    c.execute("SELECT pseudo FROM users WHERE id = ?", (user_id,))
+                    c.execute("SELECT pseudo FROM users WHERE id = ?", (int(user_id),))
                     user = c.fetchone()
                     if user:
                         game_state['color_choice_user_pseudo'] = user[0]
-                        c.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', (user_id,))
+                        c.execute('UPDATE users SET wins = wins + 1 WHERE id = ?', (int(user_id),))
                         conn.commit()
                     else:
                         game_state['color_choice_user_pseudo'] = None
                     conn.close()
+                    _leaderboard_cache["data"] = None
+                    _users_all_cache["data"] = None
                 else:
                     game_state['color_choice_user_pseudo'] = None
                 self.send_response(200)
+                self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode())
 
             elif url_path == '/api/admin/user/font':
-                user_id = data.get("user_id")
+                user_id = int(data.get("user_id"))
                 font_family = data.get("font_family", "")
                 conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('UPDATE users SET font_family = ? WHERE id = ?', (font_family, user_id))
                 conn.commit()
                 conn.close()
+                _leaderboard_cache["data"] = None
+                _users_all_cache["data"] = None
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -1596,17 +1634,19 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif url_path == '/api/admin/users/reset':
                 conn = get_db_connection()
                 c = conn.cursor()
-                c.execute('UPDATE users SET score = 0')
+                c.execute('UPDATE users SET score = 0, score_live = 0')
                 conn.commit()
                 conn.close()
+                _leaderboard_cache["data"] = None
+                _users_all_cache["data"] = None
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
                 
             elif url_path == '/api/admin/users/points':
-                user_id = data.get('id')
-                points_to_add = data.get('points')
+                user_id = int(data.get('id'))
+                points_to_add = int(data.get('points', 0))
                 
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -1614,13 +1654,15 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 result = c.fetchone()
                 
                 if result:
-                    new_score = result[0] + points_to_add
+                    new_score = (result[0] or 0) + points_to_add
                     if new_score < 0:
                         new_score = 0
                     c.execute('UPDATE users SET score = ? WHERE id = ?', (new_score, user_id))
                     conn.commit()
                     
                 conn.close()
+                _leaderboard_cache["data"] = None
+                _users_all_cache["data"] = None
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
@@ -1629,36 +1671,47 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif url_path == '/api/admin/create':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
+                    self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': 'Forbidden'}).encode('utf-8'))
                     return
                     
                 new_password = data.get('password', '').strip()
-                if new_password:
-                    conn = get_db_connection()
-                    c = conn.cursor()
-                    try:
-                        c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', (new_password, 'admin'))
-                        conn.commit()
-                        self.send_response(200)
-                    except DBIntegrityError:
-                        self.send_response(400)
-                    finally:
-                        conn.close()
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                if not new_password:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Mot de passe requis'}).encode('utf-8'))
+                    return
+
+                conn = get_db_connection()
+                c = conn.cursor()
+                try:
+                    c.execute('INSERT INTO admins (password, role) VALUES (?, ?)', (new_password, 'admin'))
+                    conn.commit()
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                except DBIntegrityError:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Ce mot de passe existe déjà'}).encode('utf-8'))
+                finally:
+                    conn.close()
 
             elif url_path == '/api/admin/list_admins':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
+                    self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': 'Forbidden'}).encode('utf-8'))
                     return
                     
                 conn = get_db_connection()
                 c = conn.cursor()
-                c.execute('SELECT id, password, role FROM admins')
+                c.execute('SELECT id, password, role FROM admins ORDER BY id ASC')
                 admins_list = [{'id': row[0], 'password': row[1], 'role': row[2]} for row in c.fetchall()]
                 conn.close()
                 
@@ -1670,15 +1723,16 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif url_path == '/api/admin/delete_admin':
                 if admin_data['role'] != 'superadmin':
                     self.send_response(403)
+                    self.send_header('Content-type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': 'Forbidden'}).encode('utf-8'))
                     return
                     
-                admin_id = data.get('id')
+                admin_id = int(data.get('id'))
                 conn = get_db_connection()
                 c = conn.cursor()
                 # Empêcher le superadmin de se supprimer lui-même
-                c.execute('DELETE FROM admins WHERE id = ? AND role != "superadmin"', (admin_id,))
+                c.execute("DELETE FROM admins WHERE id = ? AND role != 'superadmin'", (admin_id,))
                 conn.commit()
                 conn.close()
                 
@@ -1688,23 +1742,43 @@ class MyRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
 
             elif url_path == '/api/admin/phrases/add':
-                phrase = data.get('phrase', '').strip()
-                if phrase:
-                    conn = get_db_connection()
-                    c = conn.cursor()
-                    try:
-                        c.execute('INSERT INTO phrases (phrase) VALUES (?)', (phrase,))
-                        conn.commit()
-                        self.send_response(200)
-                    except DBIntegrityError:
-                        self.send_response(400)
-                    finally:
-                        conn.close()
-                self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode('utf-8'))
+                raw_phrase = data.get('phrase', '').strip()
+                lines = [p.strip() for p in raw_phrase.split('\n') if p.strip()]
+                if not lines:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Phrase vide'}).encode('utf-8'))
+                    return
+
+                conn = get_db_connection()
+                c = conn.cursor()
+                added_count = 0
+                try:
+                    for p in lines:
+                        try:
+                            c.execute('INSERT INTO phrases (phrase) VALUES (?)', (p,))
+                            conn.commit()
+                            added_count += 1
+                        except DBIntegrityError:
+                            if IS_POSTGRES:
+                                conn.rollback()
+                finally:
+                    conn.close()
+
+                if added_count > 0:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'success': True, 'added': added_count}).encode('utf-8'))
+                else:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'Cette phrase existe déjà dans la banque.'}).encode('utf-8'))
                 
             elif url_path == '/api/admin/phrases/delete':
-                phrase_id = data.get('id')
+                phrase_id = int(data.get('id'))
                 conn = get_db_connection()
                 c = conn.cursor()
                 c.execute('DELETE FROM phrases WHERE id = ?', (phrase_id,))
